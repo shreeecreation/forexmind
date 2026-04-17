@@ -4,17 +4,29 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ForexMind — Trading Journal</title>
+<!-- favicon: teal circle with chart line (data URI) -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%2314b8a6'/%3E%3Cpolyline points='20,60 40,40 55,55 75,30' fill='none' stroke='%23000505' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.min.js"></script>
+<script src="advanced_metrices.js"></script>
+<script src="discipline_engine.js"></script>
+<script src="discipline_ui.js"></script>
+<script src="leaderboard_manager.js"></script>
+<script src="leaderboard_ui.js"></script>
+<script src="manual_journal_manager.js"></script>
+<script src="manual_journal_ui.js"></script>
+
+
 <style>
 /* ===== RESET & TOKENS ===== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --gold:#c9a227;--gold-lt:#f5e6b3;--gold-dk:#8a6d0e;
+  --accent:#059669;--accent-lt:#34d399;--accent-dk:#065f46;
   --bg:#0b0e14;--bg2:#111620;--bg3:#181e2a;--bg4:#1e2736;
   --surface:#1a2235;--surface2:#222d42;
   --border:#2a3550;--border2:#344060;
@@ -42,26 +54,39 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif}
 .sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;transition:transform .3s}
 .sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
 .logo-mark{display:flex;align-items:center;gap:10px}
-.logo-icon{width:34px;height:34px;background:linear-gradient(135deg,#c9a227,#f0c94d);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent-lt));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
 .logo-text{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text)}
-.logo-text span{color:var(--gold)}
+.logo-text span{color:var(--accent)}
 .sidebar-nav{flex:1;padding:12px 8px;overflow-y:auto}
 .nav-section{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:12px 8px 6px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius);cursor:pointer;color:var(--text2);font-size:13px;font-weight:500;transition:all .15s;margin-bottom:1px;border:none;background:none;width:100%;text-align:left}
 .nav-item:hover{background:var(--bg3);color:var(--text)}
-.nav-item.active{background:rgba(201,162,39,.15);color:var(--gold);border:1px solid rgba(201,162,39,.2)}
+.nav-item.active{background:rgba(20,184,166,.12);color:var(--accent);border:1px solid rgba(20,184,166,.16)}
 .nav-item .icon{width:18px;text-align:center;font-size:15px}
 .sidebar-bottom{padding:12px 8px;border-top:1px solid var(--border)}
 .user-card{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius);background:var(--bg3)}
-.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#f0c94d);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#000;flex-shrink:0}
+.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-lt));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#000;flex-shrink:0}
 .user-info{flex:1;min-width:0}
 .user-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .user-email{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .main{flex:1;margin-left:220px;display:flex;flex-direction:column;min-height:100vh}
+
+/* Responsive: mobile behavior */
+@media (max-width: 800px) {
+  .sidebar{transform:translateX(-100%)}
+  .main{margin-left:0}
+  .mobile-tabs{display:flex}
+  .topbar-actions{display:flex;gap:6px}
+  .mobile-menu-btn{display:inline-flex}
+  .sidebar.open{transform:translateX(0);z-index:300;position:fixed;left:0;top:0;height:100vh}
+}
 .topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
 .topbar-title{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;color:var(--text)}
 .topbar-actions{display:flex;align-items:center;gap:10px}
+.mobile-tabs{display:none;gap:6px;align-items:center}
+.mobile-tab{background:transparent;border:1px solid transparent;padding:6px 8px;border-radius:8px;color:var(--text2);font-size:13px}
+.mobile-tab.active{background:rgba(0,0,0,0.08);border-color:var(--border);color:var(--text);}
 .page{padding:24px;flex:1}
 
 /* ===== AUTH SCREENS ===== */
@@ -76,10 +101,10 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif}
 .form-group{margin-bottom:14px}
 .form-label{font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
 .form-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;color:var(--text);font-size:14px;outline:none;transition:border-color .15s}
-.form-input:focus{border-color:var(--gold)}
+.form-input:focus{border-color:var(--accent)}
 .form-input::placeholder{color:var(--text3)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
-.btn-primary{background:linear-gradient(135deg,var(--gold),#e8b830);color:#000}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-lt));color:#000}
 .btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px)}
 .btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
 .btn-secondary:hover{background:var(--bg4);border-color:var(--border2)}
@@ -93,7 +118,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif}
 .divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--text3);font-size:12px}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
 .auth-toggle{text-align:center;margin-top:20px;font-size:13px;color:var(--text2)}
-.auth-toggle a{color:var(--gold);text-decoration:none;font-weight:600;cursor:pointer}
+.auth-toggle a{color:var(--accent);text-decoration:none;font-weight:600;cursor:pointer}
 .error-msg{background:var(--red-bg);border:1px solid var(--red-dk);color:var(--red);font-size:12px;padding:8px 12px;border-radius:var(--radius);margin-bottom:14px}
 .success-msg{background:var(--green-bg);border:1px solid var(--green-dk);color:var(--green);font-size:12px;padding:8px 12px;border-radius:var(--radius);margin-bottom:14px}
 
@@ -105,7 +130,7 @@ h1,h2,h3{font-family:'Space Grotesk',sans-serif}
 
 /* ===== BADGES ===== */
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:600}
-.badge-gold{background:rgba(201,162,39,.15);color:var(--gold);border:1px solid rgba(201,162,39,.3)}
+.badge-gold{background:rgba(20,184,166,.12);color:var(--accent);border:1px solid rgba(20,184,166,.18)}
 .badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-dk)}
 .badge-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-dk)}
 .badge-blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-dk)}
@@ -138,7 +163,7 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 
 /* ===== UPLOAD ZONE ===== */
 .upload-zone{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:40px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3)}
-.upload-zone:hover,.upload-zone.drag{border-color:var(--gold);background:rgba(201,162,39,.05)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(20,184,166,.03)}
 .upload-icon{font-size:40px;margin-bottom:12px}
 .upload-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px}
 .upload-sub{font-size:13px;color:var(--text2)}
@@ -156,7 +181,7 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .quote-attr{font-size:12px;color:var(--text3)}
 .streak-box{display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px}
 .streak-flame{font-size:32px}
-.streak-count{font-size:28px;font-weight:700;font-family:'Space Grotesk',sans-serif;color:var(--gold)}
+.streak-count{font-size:28px;font-weight:700;font-family:'Space Grotesk',sans-serif;color:var(--accent)}
 .streak-label{font-size:12px;color:var(--text2);margin-top:2px}
 .heatmap-grid{display:flex;flex-wrap:wrap;gap:3px;margin-top:12px}
 .heatmap-cell{width:12px;height:12px;border-radius:2px}
@@ -181,7 +206,7 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .toast{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:12px 16px;min-width:260px;max-width:360px;font-size:13px;color:var(--text);box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;animation:slideIn .25s ease}
 .toast.success{border-left:3px solid var(--green)}
 .toast.error{border-left:3px solid var(--red)}
-.toast.info{border-left:3px solid var(--gold)}
+.toast.info{border-left:3px solid var(--accent)}
 @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 
 /* ===== MISC ===== */
@@ -200,8 +225,8 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .mt-3{margin-top:12px}
 .mb-4{margin-bottom:16px}
 select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-size:13px;outline:none;cursor:pointer}
-select:focus{border-color:var(--gold)}
-.spinner{width:20px;height:20px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+select:focus{border-color:var(--accent)}
+.spinner{width:20px;height:20px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-state{display:flex;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--text2);font-size:14px}
 
@@ -210,15 +235,15 @@ select:focus{border-color:var(--gold)}
 .onboard-step.active{display:block}
 .step-dots{display:flex;gap:6px;justify-content:center;margin-bottom:20px}
 .step-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
-.step-dot.active{background:var(--gold)}
+.step-dot.active{background:var(--accent)}
 
 /* ===== REPORT ===== */
-.report-score{width:80px;height:80px;border-radius:50%;border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;flex-direction:column;margin:0 auto 16px}
-.report-score-num{font-size:24px;font-weight:700;font-family:'Space Grotesk',sans-serif;color:var(--gold);line-height:1}
+.report-score{width:80px;height:80px;border-radius:50%;border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;flex-direction:column;margin:0 auto 16px}
+.report-score-num{font-size:24px;font-weight:700;font-family:'Space Grotesk',sans-serif;color:var(--accent);line-height:1}
 .report-score-label{font-size:10px;color:var(--text3)}
 .action-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
 .action-item:last-child{border-bottom:none}
-.action-num{width:22px;height:22px;border-radius:50%;background:rgba(201,162,39,.15);color:var(--gold);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.action-num{width:22px;height:22px;border-radius:50%;background:rgba(20,184,166,.12);color:var(--accent);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 
 /* ===== RESPONSIVE ===== */
 @media(max-width:768px){
@@ -350,12 +375,23 @@ select:focus{border-color:var(--gold)}
       <button class="nav-item" onclick="navigate('trades')" id="nav-trades">
         <span class="icon">📋</span> Trade History
       </button>
+      <!-- Inside your Sidebar (around line 370 in your file) -->
+<div class="nav-section">Journal</div>
+<button class="nav-item" onclick="navigate('manualjournal')" id="nav-manual-journal">
+    <span class="icon">📓</span> Manual Journal
+</button>
       <div class="nav-section">Analysis</div>
       <button class="nav-item" onclick="navigate('mistakes')" id="nav-mistakes">
         <span class="icon">⚠️</span> Mistake Analyzer
       </button>
+      <button class="nav-item" onclick="navigate('discipline')" id="nav-discipline">
+        <span class="icon">⚠️</span> Discipline Manager
+      </button>
       <button class="nav-item" onclick="navigate('report')" id="nav-report">
         <span class="icon">📈</span> Weekly Report
+      </button>
+      <button class="nav-item" onclick="navigate('leaderboard')" id="nav-leaderboard">
+        <span class="icon">🏆</span> Leaderboard
       </button>
       <div class="nav-section">Growth</div>
       <button class="nav-item" onclick="navigate('motivation')" id="nav-motivation">
@@ -380,7 +416,17 @@ select:focus{border-color:var(--gold)}
   <!-- MAIN CONTENT -->
   <div class="main">
     <div class="topbar">
-      <div class="topbar-title" id="page-title">Dashboard</div>
+      <div style="display:flex;align-items:center;gap:12px">
+  <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleSidebarMobile()" style="border:none;background:transparent;font-size:20px;padding:6px;color:var(--text2)">☰</button>
+  <div class="topbar-title" id="page-title">Dashboard</div>
+  <!-- Mobile tab bar (visible on small screens) -->
+  <div class="mobile-tabs" id="mobile-tabs">
+          <button class="mobile-tab active" onclick="navigate('dashboard')" id="mnav-dashboard">Dash</button>
+          <button class="mobile-tab" onclick="navigate('trades')" id="mnav-trades">Trades</button>
+          <button class="mobile-tab" onclick="navigate('mistakes')" id="mnav-mistakes">Mistakes</button>
+          <button class="mobile-tab" onclick="navigate('report')" id="mnav-report">Report</button>
+        </div>
+      </div>
       <div class="topbar-actions">
         <button class="btn btn-primary" style="font-size:13px;padding:8px 14px" onclick="navigate('upload')">+ Import CSV</button>
       </div>
@@ -394,6 +440,14 @@ select:focus{border-color:var(--gold)}
         <div class="kpi-card"><div class="kpi-label">Avg R:R</div><div class="kpi-value kpi-neu" id="kpi-rr">—</div><div class="kpi-change kpi-neu" id="kpi-rr-sub">Risk/Reward ratio</div></div>
         <div class="kpi-card"><div class="kpi-label">Discipline Score</div><div class="kpi-value" id="kpi-score">—</div><div class="kpi-change kpi-neu" id="kpi-score-sub">Based on mistakes</div></div>
       </div>
+      <div class="kpi-grid" id="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+  <div class="kpi-card"><div class="kpi-label">Win Rate</div><div class="kpi-value kpi-pos" id="kpi-winrate">—</div><div class="kpi-change kpi-neu" id="kpi-winrate-sub">No trades yet</div></div>
+  <div class="kpi-card"><div class="kpi-label">Total P&L</div><div class="kpi-value" id="kpi-pnl">—</div><div class="kpi-change kpi-neu" id="kpi-pnl-sub">All time</div></div>
+  <div class="kpi-card"><div class="kpi-label">Profit Factor</div><div class="kpi-value" id="kpi-pf">—</div><div class="kpi-change kpi-neu">Gross Profit / Loss</div></div>
+  <div class="kpi-card"><div class="kpi-label">Expectancy</div><div class="kpi-value" id="kpi-expectancy">—</div><div class="kpi-change kpi-neu">Avg profit per trade</div></div>
+  <div class="kpi-card"><div class="kpi-label">Max Drawdown</div><div class="kpi-value kpi-neg" id="kpi-mdd">—</div><div class="kpi-change kpi-neu">Peak to trough</div></div>
+  <div class="kpi-card"><div class="kpi-label">Sharpe Ratio</div><div class="kpi-value" id="kpi-sharpe">—</div><div class="kpi-change kpi-neu">Risk-adjusted return</div></div>
+</div>
 
       <div class="row">
         <div class="col" style="flex:2">
@@ -451,11 +505,15 @@ select:focus{border-color:var(--gold)}
             <div class="card-title" style="margin-bottom:12px">Select Platform</div>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
               <button class="btn platform-btn" data-platform="MT4" onclick="selectPlatform('MT4')" style="flex:1">📊 MT4</button>
-              <button class="btn platform-btn" data-platform="MT5" onclick="selectPlatform('MT5')" style="flex:1">📈 MT5</button>
+              <button class="btn platform-btn" data-platform="MT5_POSITIONS" onclick="selectPlatform('MT5_POSITIONS')" style="flex:1">📈 MT5 Positions</button>
+              <button class="btn platform-btn" data-platform="MT5_DEALS" onclick="selectPlatform('MT5_DEALS')" style="flex:1">📈 MT5 Deals</button>
               <button class="btn platform-btn" data-platform="TradingView" onclick="selectPlatform('TradingView')" style="flex:1">🔮 TradingView</button>
               <button class="btn platform-btn" data-platform="Generic" onclick="selectPlatform('Generic')" style="flex:1">📋 Generic</button>
             </div>
-            <div class="mt-3" style="font-size:12px;color:var(--text3)" id="platform-hint">Select your trading platform above to auto-detect CSV columns.</div>
+            <div class="mt-3" style="font-size:12px;color:var(--text3)" id="platform-hint">Select your trading platform above to auto-detect columns.</div>
+            <div id="mt5-deals-notice" style="display:none;margin-top:10px;background:rgba(20,184,166,.06);border:1px solid rgba(20,184,166,.12);border-radius:var(--radius);padding:10px 12px;font-size:12px;color:var(--accent)">
+              ⚡ MT5 Deals mode: each trade is split into 2 rows (IN + OUT). ForexMind will automatically join them by Position ID into complete trades.
+            </div>
           </div>
 
           <div class="card">
@@ -466,9 +524,9 @@ select:focus{border-color:var(--gold)}
                  ondrop="handleDrop(event)">
               <div class="upload-icon">📂</div>
               <div class="upload-title">Drop your CSV here</div>
-              <div class="upload-sub">or click to browse • Supports MT4, MT5, TradingView exports</div>
+              <div class="upload-sub">or click to browse • Supports MT4/MT5 CSV &amp; XLSX, TradingView exports</div>
             </div>
-            <input type="file" id="csv-input" accept=".csv,.txt" style="display:none" onchange="handleFileSelect(event)"/>
+            <input type="file" id="csv-input" accept=".csv,.xlsx,.xls,.txt" style="display:none" onchange="handleFileSelect(event)"/>
           </div>
         </div>
 
@@ -482,7 +540,7 @@ select:focus{border-color:var(--gold)}
             <div id="import-progress" style="display:none;margin-bottom:12px">
               <div style="font-size:12px;color:var(--text2);margin-bottom:6px" id="import-status">Processing...</div>
               <div class="progress-track">
-                <div class="progress-fill" id="import-bar" style="width:0%;background:var(--gold)"></div>
+                <div class="progress-fill" id="import-bar" style="width:0%;background:var(--accent)"></div>
               </div>
             </div>
             <div id="import-errors" style="display:none" class="error-msg"></div>
@@ -520,6 +578,16 @@ select:focus{border-color:var(--gold)}
         </div>
       </div>
     </div>
+    <!-- Inside your Main Content area (around line 630 in your file) -->
+<div class="page" id="page-manualjournal" style="display:none">
+    <div class="section-header">
+        <div class="section-title">📓 Manual Trading Journal</div>
+    </div>
+
+    <div id="manual-journal-content">
+        <!-- The UI module will inject the journal here -->
+    </div>
+</div>
 
     <!-- MISTAKE ANALYZER -->
     <div class="page" id="page-mistakes" style="display:none">
@@ -532,7 +600,27 @@ select:focus{border-color:var(--gold)}
       <div id="mistakes-content">
         <div class="loading-state"><div class="spinner"></div> Analyzing trades...</div>
       </div>
+      
     </div>
+    <!-- Inside your Motivation Page or a new Leaderboard Page -->
+<div class="page" id="page-leaderboard">
+    <div class="section-header">
+        <div class="section-title">🏆 Global Discipline Leaderboard</div>
+        <button class="btn btn-primary" onclick="shareMyScore()" style="font-size:12px; padding:8px 14px;">Share My Score</button>
+    </div>
+    <div id="leaderboard-content">
+        <!-- The UI module will inject content here -->
+    </div>
+</div>
+    <!-- Inside your Mistakes Page or a new Discipline Page -->
+<div class="page" id="page-discipline">
+    <div class="section-header">
+        <div class="section-title">Behavioral Discipline Analysis</div>
+    </div>
+    <div id="discipline-analysis-content">
+        <!-- The engine will inject content here -->
+    </div>
+</div>
 
     <!-- WEEKLY REPORT -->
     <div class="page" id="page-report" style="display:none">
@@ -649,6 +737,28 @@ select:focus{border-color:var(--gold)}
             <button class="btn btn-secondary" onclick="exportAllTrades()" style="width:100%;margin-bottom:10px">⬇️ Export All Trades (CSV)</button>
             <button class="btn btn-danger" onclick="confirmClearTrades()" style="width:100%">🗑️ Clear All Trade Data</button>
           </div>
+          <div class="card mt-4">
+            <div class="card-title" style="margin-bottom:12px">Risk Management</div>
+            <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Quick risk calculator to estimate lot size based on stop-loss.</div>
+            <div class="form-group">
+              <label class="form-label">Pair</label>
+              <input class="form-input" id="risk-pair" type="text" placeholder="EURUSD"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Entry Price</label>
+              <input class="form-input" id="risk-entry" type="number" step="0.00001" placeholder="1.12345"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Stop Loss Price</label>
+              <input class="form-input" id="risk-stop" type="number" step="0.00001" placeholder="1.12000"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Risk % of Equity</label>
+              <input class="form-input" id="risk-percent" type="number" step="0.1" placeholder="2"/>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="calculateLotFromInputs()">Calculate Lot Size</button>
+            <div id="risk-result" style="margin-top:12px;font-size:13px;color:var(--text)"></div>
+          </div>
           <div class="card">
             <div class="card-title" style="margin-bottom:12px">About ForexMind</div>
             <div style="font-size:13px;color:var(--text2);line-height:1.6">
@@ -664,21 +774,35 @@ select:focus{border-color:var(--gold)}
 </div><!-- end #app -->
 
 <!-- TOAST CONTAINER -->
-<div class="toast-container" id="toast-container"></div>
+  <div class="toast-container" id="toast-container"></div>
 
-<!-- TRADE DETAIL MODAL -->
-<div class="modal-overlay" id="detail-modal">
-  <div class="modal" style="max-width:760px">
-    <div class="modal-header">
-      <div class="modal-title" id="detail-modal-title">Trade details</div>
-      <button class="modal-close" onclick="closeDetailModal()">✕</button>
-    </div>
-    <div class="modal-body" id="detail-modal-body"></div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+  <!-- TRADE DETAIL MODAL -->
+  <div class="modal-overlay" id="detail-modal">
+    <div class="modal" style="max-width:760px">
+      <div class="modal-header">
+        <div class="modal-title" id="detail-modal-title">Trade details</div>
+        <button class="modal-close" onclick="closeDetailModal()">✕</button>
+      </div>
+      <div class="modal-body" id="detail-modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+      </div>
     </div>
   </div>
-</div>
+
+  <!-- SCORE BREAKDOWN MODAL -->
+  <div class="modal-overlay" id="score-modal">
+    <div class="modal" style="max-width:640px">
+      <div class="modal-header">
+        <div class="modal-title">Discipline Score — Breakdown</div>
+        <button class="modal-close" onclick="closeScoreModal()">✕</button>
+      </div>
+      <div class="modal-body" id="score-modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeScoreModal()">Close</button>
+      </div>
+    </div>
+  </div>
 
 <script>
 // =====================================================
@@ -748,8 +872,6 @@ const MISTAKE_COLORS = {
   emotional_trading: '#9333ea',
   overtrading: '#0ea5e9',
   bad_rr: '#f97316'
-  ,odd_hour_trade: '#6b7280',
-  session_mismatch: '#8b5cf6'
 };
 
 const MISTAKE_LABELS = {
@@ -760,75 +882,108 @@ const MISTAKE_LABELS = {
   emotional_trading: 'Emotional Trading',
   overtrading: 'Overtrading',
   bad_rr: 'Bad R:R Entry'
-  ,odd_hour_trade: 'Odd-hour Trade',
-  session_mismatch: 'Session Mismatch'
 };
 
-// CSV Column maps per platform
+// =====================================================
+// PLATFORM COLUMN MAPS
+// =====================================================
 const PLATFORM_MAPS = {
+  // ── MT4 CSV export (Account History → Save as Report → detailed)
   MT4: {
-    ticket: ['Ticket','#'],
-    openTime: ['Open Time','OpenTime','Open time'],
-    closeTime: ['Close Time','CloseTime','Close time'],
-    symbol: ['Symbol','Pair'],
-    type: ['Type'],
-    lotSize: ['Lots','Lot Size','Volume','Size'],
-    openPrice: ['Open Price','OpenPrice','Open price'],
+    ticket:     ['Ticket','#','ticket'],
+    openTime:   ['Open Time','OpenTime','Open time'],
+    closeTime:  ['Close Time','CloseTime','Close time'],
+    symbol:     ['Symbol','Pair','symbol'],
+    type:       ['Type','type'],
+    lotSize:    ['Lots','Lot Size','Volume','Size','lots'],
+    openPrice:  ['Open Price','OpenPrice','Open price'],
     closePrice: ['Close Price','ClosePrice','Close price'],
-    stopLoss: ['S / L','S/L','StopLoss','Stop Loss'],
+    stopLoss:   ['S / L','S/L','StopLoss','Stop Loss'],
     takeProfit: ['T / P','T/P','TakeProfit','Take Profit'],
-    profit: ['Profit','P&L','Net Profit'],
-    commission: ['Commission'],
-    swap: ['Swap'],
-    comment: ['Comment','Comments']
+    profit:     ['Profit','P&L','Net Profit','profit'],
+    commission: ['Commission','commission'],
+    swap:       ['Swap','swap'],
+    comment:    ['Comment','Comments','comment']
   },
-  MT5: {
-    ticket: ['Position','Deal','Order'],
-    openTime: ['Time','Open Time'],
-    closeTime: ['Time','Close Time'],
-    symbol: ['Symbol'],
-    type: ['Type','Direction'],
-    lotSize: ['Volume','Lots'],
-    openPrice: ['Price','Open Price'],
-    closePrice: ['Price','Close Price'],
-    stopLoss: ['S/L','StopLoss'],
-    takeProfit: ['T/P','TakeProfit'],
-    profit: ['Profit','P&L'],
-    commission: ['Commission','Fee'],
-    swap: ['Swap'],
-    comment: ['Comment']
+
+  // ── MT5 Positions XLSX/CSV (History tab → Positions → right-click → Save)
+  // MT5 duplicates "Time" and "Price" columns. SheetJS/PapaParse rename them:
+  //   first  Time  → "Time"    (open time)
+  //   second Time  → "Time_1"  (close time)
+  //   first  Price → "Price"   (open price)
+  //   second Price → "Price_1" (close price)
+  MT5_POSITIONS: {
+    ticket:     ['Position','position'],
+    openTime:   ['Time','Open Time','time'],
+    closeTime:  ['Time_1','Time__1','Close Time','close time'],
+    symbol:     ['Symbol','symbol'],
+    type:       ['Type','type'],
+    lotSize:    ['Volume','Lots','volume','lots'],
+    openPrice:  ['Price','Open Price','price'],
+    closePrice: ['Price_1','Price__1','Close Price','close price'],
+    stopLoss:   ['S/L','S / L','StopLoss','Stop Loss'],
+    takeProfit: ['T/P','T / P','TakeProfit','Take Profit'],
+    profit:     ['Profit','P&L','profit'],
+    commission: ['Commission','Fee','commission'],
+    swap:       ['Swap','swap'],
+    comment:    ['Comment','comment']
   },
+
+  // ── MT5 Deals XLSX/CSV (History tab → Deals → right-click → Save)
+  // Each completed trade = 2 rows: direction "in" (entry) + "out" (exit)
+  // We detect this by the presence of a "Direction" column and join them.
+  MT5_DEALS: {
+    ticket:     ['Position','Deal','Order','position','deal'],
+    openTime:   ['Time','time'],          // "in" row time = open
+    closeTime:  ['Time','time'],          // "out" row time = close (resolved after join)
+    symbol:     ['Symbol','symbol'],
+    type:       ['Type','type'],
+    lotSize:    ['Volume','Lots','volume'],
+    openPrice:  ['Price','price'],
+    closePrice: ['Price','price'],        // resolved after join
+    stopLoss:   ['S/L','S / L'],
+    takeProfit: ['T/P','T / P'],
+    profit:     ['Profit','profit'],
+    commission: ['Commission','Fee','commission'],
+    swap:       ['Swap','swap'],
+    comment:    ['Comment','comment'],
+    direction:  ['Direction','direction'] // special MT5 Deals field: "in" / "out"
+  },
+
+  // ── TradingView Strategy Tester export
   TradingView: {
-    ticket: ['Trade #','Id','#'],
-    openTime: ['Date/Time Opened','Date Opened','Open Date'],
-    closeTime: ['Date/Time Closed','Date Closed','Close Date'],
-    symbol: ['Ticker','Symbol','Market'],
-    type: ['Type','Side','Direction'],
-    lotSize: ['Qty','Quantity','Contracts','Volume'],
-    openPrice: ['Price Opened','Open','Entry Price'],
-    closePrice: ['Price Closed','Close','Exit Price'],
-    stopLoss: ['Stop Loss','SL'],
+    ticket:     ['Trade #','Id','#'],
+    openTime:   ['Date/Time Opened','Date Opened','Open Date','Entry Time'],
+    closeTime:  ['Date/Time Closed','Date Closed','Close Date','Exit Time'],
+    symbol:     ['Ticker','Symbol','Market'],
+    type:       ['Type','Side','Direction'],
+    lotSize:    ['Qty','Quantity','Contracts','Volume'],
+    openPrice:  ['Price Opened','Open','Entry Price','Entry'],
+    closePrice: ['Price Closed','Close','Exit Price','Exit'],
+    stopLoss:   ['Stop Loss','SL','Stop'],
     takeProfit: ['Take Profit','TP','Target'],
-    profit: ['Profit','P&L','Return $'],
+    profit:     ['Profit','P&L','Return $','Net Profit'],
     commission: ['Commission','Fee'],
-    swap: [''],
-    comment: ['Notes','Comment']
+    swap:       [''],
+    comment:    ['Notes','Comment']
   },
+
+  // ── Generic / any other broker
   Generic: {
-    ticket: ['id','ticket','#','trade_id'],
-    openTime: ['open_time','entry_time','date','open date'],
-    closeTime: ['close_time','exit_time','close date'],
-    symbol: ['symbol','pair','instrument','market'],
-    type: ['type','side','direction'],
-    lotSize: ['lots','volume','qty','quantity','size'],
-    openPrice: ['open_price','entry','entry_price','open'],
-    closePrice: ['close_price','exit','exit_price','close'],
-    stopLoss: ['sl','stop_loss','stoploss'],
-    takeProfit: ['tp','take_profit','takeprofit'],
-    profit: ['profit','pnl','p_l','net_profit','return'],
-    commission: ['commission','fee'],
-    swap: ['swap'],
-    comment: ['comment','notes','remarks']
+    ticket:     ['id','ticket','#','trade_id','order'],
+    openTime:   ['open_time','entry_time','date','open date','opentime'],
+    closeTime:  ['close_time','exit_time','close date','closetime'],
+    symbol:     ['symbol','pair','instrument','market','currency'],
+    type:       ['type','side','direction','action'],
+    lotSize:    ['lots','volume','qty','quantity','size','units'],
+    openPrice:  ['open_price','entry','entry_price','open','openprice'],
+    closePrice: ['close_price','exit','exit_price','close','closeprice'],
+    stopLoss:   ['sl','stop_loss','stoploss','stop'],
+    takeProfit: ['tp','take_profit','takeprofit','target'],
+    profit:     ['profit','pnl','p_l','net_profit','return','gain'],
+    commission: ['commission','fee','cost'],
+    swap:       ['swap','rollover'],
+    comment:    ['comment','notes','remarks','description']
   }
 };
 
@@ -1067,6 +1222,7 @@ async function loadTrades() {
 // NAVIGATION
 // =====================================================
 function navigate(page) {
+  
   document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   
@@ -1074,10 +1230,15 @@ function navigate(page) {
   if(pageEl) pageEl.style.display = 'block';
   const navEl = document.getElementById('nav-' + page);
   if(navEl) navEl.classList.add('active');
-  
-  const titles = { dashboard:'Dashboard', upload:'Import Trades', trades:'Trade History', mistakes:'Mistake Analyzer', report:'Weekly Report', motivation:'Motivation Hub', settings:'Settings' };
+
+  const titles = { dashboard:'Dashboard', upload:'Import Trades', trades:'Trade History', mistakes:'Mistake Analyzer', report:'Weekly Report', motivation:'Motivation Hub', settings:'Settings', leaderboard:'Leaderboard', manualjournal:'Manual Journal' };
   document.getElementById('page-title').textContent = titles[page] || page;
   appState.currentPage = page;
+
+  // Update mobile tab active state if present
+  document.querySelectorAll('.mobile-tab').forEach(nt => nt.classList.remove('active'));
+  const mnav = document.getElementById('mnav-' + page);
+  if(mnav) mnav.classList.add('active');
   
   if(page === 'dashboard') renderDashboard();
   if(page === 'trades') renderTradesPage();
@@ -1085,7 +1246,72 @@ function navigate(page) {
   if(page === 'report') renderReportPage();
   if(page === 'motivation') renderMotivationPage();
   if(page === 'settings') renderSettingsPage();
+  if(page === 'discipline') renderDisciplinePage();
+  if(page === 'leaderboard') renderLeaderboardPage();
+  if(page === 'manualjournal') ManualJournalUI.renderManualJournalPage();
+
+  // On mobile, auto-close sidebar after navigation
+  if(window.matchMedia && window.matchMedia('(max-width:800px)').matches) {
+    document.getElementById('sidebar').classList.remove('open');
+  }
 }
+
+function renderLeaderboardPage() {
+    // Fetch and display the leaderboard data
+    LeaderboardManager.getTopTraders().then(topTraders => {
+        LeaderboardUI.renderLeaderboard(topTraders);
+    });
+}
+/**
+ * Shares the current user's discipline score to the global leaderboard.
+ */
+async function shareMyScore() {
+    const trades = appState.trades;
+    const profile = appState.userProfile || { accountEquity: 10000, maxRiskPerTrade: 2 };
+    
+    // 1. Calculate the latest score using the Strict Engine
+    const analysis = DisciplineEngine.analyze(trades, profile);
+    if (!analysis) {
+        toast("No trades to analyze!", "error");
+        return;
+    }
+
+    // 2. Submit to Firestore
+    toast("Sharing score...", "info");
+    const result = await LeaderboardManager.submitScore(analysis.finalScore, profile);
+    
+    if (result.success) {
+        toast("Score shared successfully! 🏆", "success");
+        renderLeaderboardPage(); // Refresh the leaderboard
+    } else {
+        toast("Failed to share score: " + result.error, "error");
+    }
+}
+
+/**
+ * Renders the leaderboard page.
+ */
+async function renderLeaderboardPage() {
+    const topTraders = await LeaderboardManager.getTopTraders(10);
+    LeaderboardUI.renderLeaderboard(topTraders);
+}
+function renderDisciplinePage() {
+    const trades = appState.trades;
+    const profile = appState.userProfile || { accountEquity: 10000, maxRiskPerTrade: 2 };
+    
+    // 1. Run the Engine
+    const analysis = DisciplineEngine.analyze(trades, profile);
+    
+    // 2. Render the UI
+    DisciplineUI.renderDisciplineDashboard(analysis);
+}
+
+function toggleSidebarMobile() {
+  const sb = document.getElementById('sidebar');
+  if(sb.classList.contains('open')) sb.classList.remove('open'); else sb.classList.add('open');
+}
+
+function closeSidebarMobile() { document.getElementById('sidebar').classList.remove('open'); }
 
 function updateSidebarUser() {
   const u = appState.user;
@@ -1102,6 +1328,12 @@ function updateSidebarUser() {
 function renderDashboard() {
   const trades = appState.trades;
   if(!trades.length) return;
+
+   const pf = AdvancedMetrics.calculateProfitFactor(trades);
+  const expectancy = AdvancedMetrics.calculateExpectancy(trades);
+  const mdd = AdvancedMetrics.calculateMaxDrawdown(trades, appState.userProfile?.accountEquity || 10000);
+  const sharpe = AdvancedMetrics.calculateSharpeRatio(trades);
+
   
   const winners = trades.filter(t => t.profit > 0);
   const losers = trades.filter(t => t.profit <= 0);
@@ -1146,6 +1378,10 @@ function renderDashboard() {
   // Streak
   const streak = computeStreak(trades);
   document.getElementById('dash-streak').textContent = streak;
+  document.getElementById('kpi-pf').textContent = pf.toFixed(2);
+  document.getElementById('kpi-expectancy').textContent = '$' + expectancy.toFixed(2);
+  document.getElementById('kpi-mdd').textContent = '$' + mdd.toFixed(2);
+  document.getElementById('kpi-sharpe').textContent = sharpe.toFixed(2);
 }
 
 function renderEquityChart() {
@@ -1247,7 +1483,7 @@ function renderRecentTrades() {
 }
 
 // =====================================================
-// CSV IMPORT SYSTEM
+// FILE IMPORT SYSTEM — CSV + XLSX + MT5 DEALS JOIN
 // =====================================================
 let selectedPlatform = 'MT4';
 
@@ -1257,52 +1493,199 @@ function selectPlatform(p) {
     b.className = 'btn ' + (b.dataset.platform === p ? 'btn-primary' : 'btn-secondary') + ' platform-btn';
   });
   const hints = {
-    MT4: 'MT4: Account History tab → right-click → Save as Report (detailed) → save as CSV',
-    MT5: 'MT5: History tab → right-click → Save as CSV',
-    TradingView: 'TradingView: Strategy Tester → List of Trades → Export',
-    Generic: 'Generic: Any CSV with columns for symbol, open/close time, lot size, and profit'
+    MT4:          'MT4: Account History tab → right-click → Save as Report (detailed) → save as CSV',
+    MT5_POSITIONS:'MT5 Positions: History tab → Positions → right-click → Save as → CSV or XLSX',
+    MT5_DEALS:    'MT5 Deals: History tab → Deals → right-click → Save as → CSV or XLSX (2 rows per trade — auto-joined)',
+    TradingView:  'TradingView: Strategy Tester → List of Trades → Export to CSV',
+    Generic:      'Generic: Any CSV/XLSX with columns for symbol, open/close time, lot size, and profit'
   };
-  document.getElementById('platform-hint').textContent = hints[p];
+  document.getElementById('platform-hint').textContent = hints[p] || '';
+  document.getElementById('mt5-deals-notice').style.display = p === 'MT5_DEALS' ? 'block' : 'none';
 }
 
 function handleDrop(e) {
   e.preventDefault();
   document.getElementById('upload-zone').classList.remove('drag');
   const file = e.dataTransfer.files[0];
-  if(file) processCSV(file);
+  if(file) processFile(file);
 }
 
 function handleFileSelect(e) {
   const file = e.target.files[0];
-  if(file) processCSV(file);
+  if(file) processFile(file);
 }
 
+// ── Unified entry point: routes to CSV or XLSX parser
+function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(ext === 'xlsx' || ext === 'xls') {
+    processXLSX(file);
+  } else {
+    processCSV(file);
+  }
+}
+
+// ── CSV parser (PapaParse)
 function processCSV(file) {
   Papa.parse(file, {
     header: true,
     skipEmptyLines: true,
+    transformHeader: h => h.trim(),
     complete: function(results) {
       if(!results.data.length) { toast('CSV appears to be empty', 'error'); return; }
-      
       appState.csvHeaders = results.meta.fields || [];
       appState.parsedRows = results.data;
-      
-      // Auto-detect column mapping
-      const map = autoDetectColumns(appState.csvHeaders, PLATFORM_MAPS[selectedPlatform]);
-      appState.columnMap = map;
-      
-      showPreview(results.data, map);
+      onFileLoaded(appState.csvHeaders, appState.parsedRows, 'csv');
     },
     error: function(err) { toast('Could not parse CSV: ' + err.message, 'error'); }
   });
 }
+function processXLSX(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {
+        type: 'array',
+        cellDates: true,
+      });
 
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+      // 1. Get raw rows first to handle the "Stop at Orders" logic manually
+      const rawRows = XLSX.utils.sheet_to_json(sheet, {
+        range: 6, // Start at header row (index 6)
+        header: 1, // Get as arrays first to check the first column easily
+        defval: '',
+        raw: false,
+        dateNF: 'yyyy-mm-dd HH:mm:ss'
+      });
+
+      if (!rawRows.length) {
+        toast('XLSX sheet appears to be empty', 'error');
+        return;
+      }
+
+      const headers = rawRows[0]; // The headers are the first row of our range
+      const tradeData = [];
+
+      // 2. Loop through rows and STOP when "Orders" starts
+      for (let i = 1; i < rawRows.length; i++) {
+        const row = rawRows[i];
+        const firstCell = String(row[0]).trim();
+
+        // KILL SWITCH: Stop processing completely when we hit the next table
+        if (firstCell === "Orders" || firstCell === "Working Orders" || firstCell === "Summary") {
+          break;
+        }
+
+        // Only add rows that have a Ticket/Time (skips empty spacer rows)
+        if (firstCell && firstCell !== "") {
+          const obj = {};
+          headers.forEach((h, index) => {
+            // Handle duplicate header names (SheetJS style: Time, Time_1)
+            let finalHeader = h;
+            if (headers.indexOf(h) !== index) {
+                // This is a duplicate, find how many times it appeared before
+                const occurrences = headers.slice(0, index).filter(x => x === h).length;
+                finalHeader = `${h}_${occurrences}`;
+            }
+            obj[finalHeader] = row[index] ?? "";
+          });
+          tradeData.push(obj);
+        }
+      }
+
+      if (!tradeData.length) {
+        toast('No trades found in the Positions section.', 'error');
+        return;
+      }
+
+      // 3. Update App State with cleaned headers and rows
+      // We regenerate the unique header list for the mapping UI
+      const uniqueHeaders = Object.keys(tradeData[0]);
+      
+      appState.csvHeaders = uniqueHeaders;
+      appState.parsedRows = tradeData;
+
+      toast(`✅ Imported ${tradeData.length} closed positions.`, 'success');
+      onFileLoaded(uniqueHeaders, tradeData, 'xlsx');
+
+    } catch(err) {
+      toast('Could not parse XLSX: ' + err.message, 'error');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+
+// Add this helper or inline it inside your loop
+function cleanMTNumber(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  
+  // 1. Convert to string
+  let str = val.toString().trim();
+  
+  // 2. Replace special "long dashes" (– or —) with a standard minus (-)
+  // and remove any double dashes (--) often found in these reports
+  str = str.replace(/[–—]/g, '-').replace(/--/g, '-');
+  
+  // 3. Remove everything except numbers, dots, and the minus sign
+  // (This handles currency symbols like $ or € too)
+  str = str.replace(/[^\d.-]/g, '');
+  
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+}
+
+
+// ── Called after either parser finishes
+function onFileLoaded(headers, rows, fileType) {
+  // Auto-detect platform if not explicitly chosen, or validate selection
+  const detectedPlatform = detectPlatform(headers, rows);
+  if(detectedPlatform && detectedPlatform !== selectedPlatform) {
+    // Suggest but don't override — show a notice
+    toast(`💡 Detected: ${PLATFORM_DISPLAY_NAMES[detectedPlatform]} — you selected ${PLATFORM_DISPLAY_NAMES[selectedPlatform]}`, 'info');
+  }
+
+  const platformMap = PLATFORM_MAPS[selectedPlatform];
+  const map = autoDetectColumns(headers, platformMap);
+  appState.columnMap = map;
+  showPreview(rows, map, fileType);
+}
+
+const PLATFORM_DISPLAY_NAMES = {
+  MT4: 'MT4', MT5_POSITIONS: 'MT5 Positions', MT5_DEALS: 'MT5 Deals',
+  TradingView: 'TradingView', Generic: 'Generic'
+};
+
+// ── Heuristic platform detection from headers
+function detectPlatform(headers, rows) {
+  const h = headers.map(x => x.toLowerCase());
+  // MT5 Deals: has "direction" column with "in"/"out" values
+  if(h.includes('direction') || h.includes('deal')) {
+    const firstRow = rows[0] || {};
+    const dirVal = (firstRow['Direction'] || firstRow['direction'] || '').toLowerCase();
+    if(dirVal === 'in' || dirVal === 'out') return 'MT5_DEALS';
+    return 'MT5_DEALS';
+  }
+  // MT5 Positions: has "position" or duplicate Time/Price columns (Time_1 etc)
+  if(h.includes('position') || h.includes('time_1') || h.includes('price_1')) return 'MT5_POSITIONS';
+  // MT4: has "lots" or "open time" or "close time"
+  if(h.includes('lots') || h.some(x=>x.includes('open time')) || h.some(x=>x.includes('close time'))) return 'MT4';
+  // TradingView: has "trade #" or "ticker"
+  if(h.includes('trade #') || h.includes('ticker')) return 'TradingView';
+  return null;
+}
+
+// ── Map column names using platform map
 function autoDetectColumns(headers, platformMap) {
   const map = {};
-  const lowerHeaders = headers.map(h => h.toLowerCase().trim());
-  
+  const lowerHeaders = headers.map(h => (h||'').toLowerCase().trim());
   Object.entries(platformMap).forEach(([field, candidates]) => {
     for(const cand of candidates) {
+      if(!cand) continue;
       const idx = lowerHeaders.indexOf(cand.toLowerCase().trim());
       if(idx !== -1) { map[field] = headers[idx]; break; }
     }
@@ -1310,41 +1693,39 @@ function autoDetectColumns(headers, platformMap) {
   return map;
 }
 
-function showPreview(rows, map) {
+// ── Preview the parsed file
+function showPreview(rows, map, fileType) {
   const previewCard = document.getElementById('preview-card');
   previewCard.style.display = 'block';
-  
-  document.getElementById('preview-count').textContent = rows.length + ' trades found';
-  
-  // Show first 5 rows
+  document.getElementById('preview-count').textContent = rows.length + (fileType === 'xlsx' ? ' rows (XLSX)' : ' trades found');
+
   const headers = appState.csvHeaders;
   const preview5 = rows.slice(0, 5);
-  const previewWrap = document.getElementById('preview-wrap');
-  previewWrap.innerHTML = `<div style="overflow-x:auto"><table style="font-size:11px;min-width:600px">
-    <thead><tr>${headers.map(h => `<th style="white-space:nowrap">${h}</th>`).join('')}</tr></thead>
-    <tbody>${preview5.map(row => `<tr>${headers.map(h => `<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${row[h]||''}</td>`).join('')}</tr>`).join('')}</tbody>
-  </table></div>`;
-  
-  // Show column mapping UI for unmapped required fields
+  document.getElementById('preview-wrap').innerHTML = `
+    <div style="overflow-x:auto"><table style="font-size:11px;min-width:600px">
+      <thead><tr>${headers.map(h => `<th style="white-space:nowrap">${h}</th>`).join('')}</tr></thead>
+      <tbody>${preview5.map(row => `<tr>${headers.map(h => `<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${row[h]||''}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table></div>`;
+
   const required = ['openTime','closeTime','symbol','type','lotSize','openPrice','closePrice','profit'];
   const missing = required.filter(f => !map[f]);
-  
+
   if(missing.length > 0) {
     document.getElementById('column-map-card').style.display = 'block';
     document.getElementById('column-map-wrap').innerHTML = required.map(field => `
       <div class="form-group">
         <label class="form-label" style="display:flex;align-items:center;gap:6px">
-          ${field} ${missing.includes(field) ? '<span style="color:var(--red)">*</span>' : '<span style="color:var(--green)">✓</span>'}
+          ${field} ${missing.includes(field) ? '<span style="color:var(--red)">* unmapped</span>' : '<span style="color:var(--green)">✓ auto-mapped</span>'}
         </label>
         <select id="map-${field}" style="width:100%" onchange="updateColumnMap('${field}',this.value)">
           <option value="">— not mapped —</option>
-          ${appState.csvHeaders.map(h => `<option value="${h}" ${map[field]===h?'selected':''}>${h}</option>`).join('')}
+          ${headers.map(h => `<option value="${h}" ${map[field]===h?'selected':''}>${h}</option>`).join('')}
         </select>
       </div>`).join('');
   } else {
     document.getElementById('column-map-card').style.display = 'none';
   }
-  
+
   document.getElementById('import-btn').style.display = 'block';
 }
 
@@ -1352,88 +1733,68 @@ function updateColumnMap(field, val) {
   appState.columnMap[field] = val;
 }
 
+// ── Main import: handles MT5 Deals join + normalization
 async function importTrades() {
   const rows = appState.parsedRows;
   const map = appState.columnMap;
   const btn = document.getElementById('import-btn');
-  
-  // Validate we have minimum required cols
+
   const required = ['openTime','closeTime','symbol','type','profit'];
   const missing = required.filter(f => !map[f]);
-  if(missing.length) {
-    toast('Please map required columns: ' + missing.join(', '), 'error');
-    return;
-  }
-  
+  if(missing.length) { toast('Please map required columns: ' + missing.join(', '), 'error'); return; }
+
   btn.disabled = true;
   document.getElementById('import-progress').style.display = 'block';
-  
-  // Normalize rows
-  const normalized = [];
+  document.getElementById('import-status').textContent = 'Processing rows...';
+  document.getElementById('import-bar').style.width = '10%';
+
+  let normalized = [];
   const errors = [];
+
+  // ── MT5 Deals: join IN + OUT rows by Position ID
+  if(selectedPlatform === 'MT5_DEALS') {
+    normalized = joinMT5Deals(rows, map, errors);
+  } else {
+    // ── Standard row-by-row normalization
+    rows.forEach((row, idx) => {
+      try {
+        const t = normalizeRow(row, map, idx);
+        if(t) normalized.push(t);
+      } catch(e) {
+        errors.push({ row: idx + 1, error: e.message });
+      }
+    });
+  }
   
-  rows.forEach((row, idx) => {
-    try {
-      const profit = parseFloat(row[map.profit]) || 0;
-      const lotSize = parseFloat(row[map.lotSize]) || 0.01;
-      const openTime = row[map.openTime] || '';
-      const closeTime = row[map.closeTime] || openTime;
-      
-      if(!row[map.symbol]) throw new Error('Missing symbol');
-      if(isNaN(profit) && map.profit) throw new Error('Invalid profit');
-      
-      const trade = {
-        ticket: map.ticket ? (row[map.ticket] || 'T'+idx) : 'T'+idx,
-        symbol: (row[map.symbol] || '').toString().toUpperCase().replace(/\s/g,''),
-        type: (row[map.type] || 'buy').toString().toLowerCase(),
-        lotSize: Math.abs(lotSize),
-        openPrice: parseFloat(row[map.openPrice]) || 0,
-        closePrice: parseFloat(row[map.closePrice]) || 0,
-        stopLoss: parseFloat(row[map.stopLoss]) || 0,
-        takeProfit: parseFloat(row[map.takeProfit]) || 0,
-        profit: profit,
-        commission: parseFloat(row[map.commission]) || 0,
-        swap: parseFloat(row[map.swap]) || 0,
-        openTime: normalizeDateTime(openTime),
-        closeTime: normalizeDateTime(closeTime),
-        comment: map.comment ? (row[map.comment] || '') : '',
-        importedAt: new Date().toISOString()
-      };
-      normalized.push(trade);
-    } catch(e) {
-      errors.push({ row: idx + 1, error: e.message });
-    }
-  });
-  
-  // Sort by closeTime
+
+  // Sort chronologically
   normalized.sort((a,b) => new Date(a.closeTime) - new Date(b.closeTime));
-  
-  // Calculate running equity
+
+  // Running equity
   let equity = appState.userProfile?.accountEquity || 10000;
   normalized.forEach(t => { equity += t.profit; t.runningEquity = +equity.toFixed(2); });
-  
-  // Update progress
-  document.getElementById('import-status').textContent = 'Saving ' + normalized.length + ' trades...';
+
+  document.getElementById('import-status').textContent = `Saving ${normalized.length} trades...`;
   document.getElementById('import-bar').style.width = '40%';
-  
-  // Save to Firestore or memory
+
+  // Save to Firestore or memory, skip duplicates by ticket
   if(db && appState.user) {
-    const batch = db.batch();
     const existingTickets = new Set(appState.trades.map(t => t.ticket));
     let newCount = 0;
-    
-    normalized.forEach(trade => {
-      if(existingTickets.has(trade.ticket)) return;
-      const ref = db.collection('users').doc(appState.user.uid).collection('trades').doc();
-      batch.set(ref, trade);
-      appState.trades.push({ id: ref.id, ...trade });
-      newCount++;
-    });
-    
-    await batch.commit();
+    // Firestore max 500 per batch — chunk it
+    const chunks = chunkArray(normalized.filter(t => !existingTickets.has(t.ticket)), 400);
+    for(const chunk of chunks) {
+      const batch = db.batch();
+      chunk.forEach(trade => {
+        const ref = db.collection('users').doc(appState.user.uid).collection('trades').doc();
+        batch.set(ref, trade);
+        appState.trades.push({ id: ref.id, ...trade });
+        newCount++;
+      });
+      await batch.commit();
+    }
     document.getElementById('import-status').textContent = `Saved ${newCount} new trades (${normalized.length - newCount} duplicates skipped)`;
   } else {
-    // Demo mode - add to memory, skip duplicates by ticket
     const existingTickets = new Set(appState.trades.map(t => t.ticket));
     let newCount = 0;
     normalized.forEach(trade => {
@@ -1444,46 +1805,173 @@ async function importTrades() {
     });
     document.getElementById('import-status').textContent = `Added ${newCount} new trades`;
   }
-  
+
   document.getElementById('import-bar').style.width = '70%';
   document.getElementById('import-status').textContent = 'Analyzing mistakes...';
-  
-  // Show errors if any
+
   if(errors.length) {
     document.getElementById('import-errors').style.display = 'block';
     document.getElementById('import-errors').textContent = `${errors.length} rows skipped due to invalid data`;
   }
-  
-  // Run analysis
-  await new Promise(r => setTimeout(r, 500));
+
+  await new Promise(r => setTimeout(r, 400));
   document.getElementById('import-bar').style.width = '100%';
   document.getElementById('import-status').textContent = '✓ Import complete!';
-  
   btn.disabled = false;
-  toast(`✅ Imported ${normalized.length} trades — ${analyzeMistakes(appState.trades).length} mistake patterns found`, 'success');
-  
-  setTimeout(() => {
-    navigate('dashboard');
-  }, 1200);
+
+  const mistakeCount = analyzeMistakes(appState.trades).length;
+  toast(`✅ Imported ${normalized.length} trades — ${mistakeCount} mistake patterns found`, 'success');
+  setTimeout(() => navigate('dashboard'), 1200);
 }
 
+// ── Normalize a single row into a standard trade object
+function normalizeRow(row, map, idx) {
+  // 1. IMPROVED PROFIT PARSING
+  let rawProfit = String(row[map.profit] || '0').trim();
+  
+  // Clean the string: 
+  // Replace long dashes (– or —) and double dashes (--) with a standard minus (-)
+  // Then remove everything except numbers, dots, and the minus sign
+  rawProfit = rawProfit.replace(/[–—]/g, '-').replace(/--/g, '-');
+  rawProfit = rawProfit.replace(/[^\d.-]/g, '');
+
+  const profit = parseFloat(rawProfit);
+  if(isNaN(profit)) throw new Error('Invalid profit value: ' + row[map.profit]);
+
+  // 2. APPLY SAME CLEANING TO COMMISSION AND SWAP (just in case they have dashes too)
+  const cleanOther = (val) => {
+    let s = String(val || '0').replace(/[–—]/g, '-').replace(/--/g, '-').replace(/[^\d.-]/g, '');
+    return parseFloat(s) || 0;
+  };
+
+  const lotSize = Math.abs(parseFloat(row[map.lotSize]) || 0.01);
+  const openTime = row[map.openTime] || '';
+  const closeTime = row[map.closeTime] || openTime;
+  const sym = (row[map.symbol] || '').toString().toUpperCase().replace(/\s/g,'');
+  
+  if(!sym) throw new Error('Missing symbol');
+
+  return {
+    ticket:     map.ticket ? String(row[map.ticket] || 'T' + idx) : 'T' + idx,
+    symbol:     sym,
+    type:       normalizeType(row[map.type] || 'buy'),
+    lotSize,
+    openPrice:  parseFloat(row[map.openPrice]) || 0,
+    closePrice: parseFloat(row[map.closePrice]) || 0,
+    stopLoss:   parseFloat(row[map.stopLoss]) || 0,
+    takeProfit: parseFloat(row[map.takeProfit]) || 0,
+    profit:     profit, // Now correctly negative if it was a loss!
+    commission: cleanOther(row[map.commission]),
+    swap:       cleanOther(row[map.swap]),
+    openTime:   normalizeDateTime(openTime),
+    closeTime:  normalizeDateTime(closeTime),
+    comment:    map.comment ? String(row[map.comment] || '') : '',
+    importedAt: new Date().toISOString()
+  };
+}
+
+// ── Normalize trade type strings to buy/sell
+function normalizeType(raw) {
+  const s = (raw || '').toString().toLowerCase().trim();
+  if(s.includes('buy') || s === 'long' || s === '0') return 'buy';
+  if(s.includes('sell') || s === 'short' || s === '1') return 'sell';
+  return s || 'buy';
+}
+
+// ── MT5 Deals join: pair "in" and "out" rows by Position ID
+function joinMT5Deals(rows, map, errors) {
+  const dirField = map.direction || 'Direction';
+  const posField = map.ticket || 'Position';
+  const timeField = map.openTime || 'Time';
+  const priceField = map.openPrice || 'Price';
+
+  // Group rows by Position ID
+  const groups = {};
+  rows.forEach((row, idx) => {
+    const posId = String(row[posField] || row['Position'] || row['Deal'] || idx);
+    if(!groups[posId]) groups[posId] = [];
+    groups[posId].push(row);
+  });
+
+  const trades = [];
+  Object.entries(groups).forEach(([posId, grpRows]) => {
+    try {
+      const dir = (r) => (r[dirField] || r['Direction'] || r['direction'] || '').toLowerCase().trim();
+
+      // Find "in" (entry) and "out" (exit) rows
+      let inRow  = grpRows.find(r => dir(r) === 'in')  || grpRows[0];
+      let outRow = grpRows.find(r => dir(r) === 'out') || grpRows[grpRows.length - 1];
+
+      // If only one row (already a full trade in some MT5 exports), use it directly
+      if(grpRows.length === 1) {
+        inRow = grpRows[0]; outRow = grpRows[0];
+      }
+
+      const sym = (inRow[map.symbol] || inRow['Symbol'] || '').toString().toUpperCase().replace(/\s/g,'');
+      if(!sym) throw new Error('Missing symbol');
+
+      // Profit comes from the OUT row (or sum of all rows in group)
+      const totalProfit = grpRows.reduce((s, r) => s + (parseFloat(r[map.profit] || r['Profit']) || 0), 0);
+      const totalComm   = grpRows.reduce((s, r) => s + (parseFloat(r[map.commission] || r['Commission'] || r['Fee']) || 0), 0);
+      const totalSwap   = grpRows.reduce((s, r) => s + (parseFloat(r[map.swap] || r['Swap']) || 0), 0);
+
+      trades.push({
+        ticket:     posId,
+        symbol:     sym,
+        type:       normalizeType(inRow[map.type] || inRow['Type'] || 'buy'),
+        lotSize:    Math.abs(parseFloat(inRow[map.lotSize] || inRow['Volume'] || inRow['Lots']) || 0.01),
+        openPrice:  parseFloat(inRow[priceField]  || inRow['Price']) || 0,
+        closePrice: parseFloat(outRow[priceField] || outRow['Price']) || 0,
+        stopLoss:   parseFloat(inRow[map.stopLoss]  || inRow['S/L']  || 0) || 0,
+        takeProfit: parseFloat(inRow[map.takeProfit]|| inRow['T/P']  || 0) || 0,
+        profit:     +totalProfit.toFixed(2),
+        commission: +totalComm.toFixed(2),
+        swap:       +totalSwap.toFixed(2),
+        openTime:   normalizeDateTime(String(inRow[timeField]  || inRow['Time'] || '')),
+        closeTime:  normalizeDateTime(String(outRow[timeField] || outRow['Time'] || '')),
+        comment:    String(outRow[map.comment] || outRow['Comment'] || ''),
+        importedAt: new Date().toISOString()
+      });
+    } catch(e) {
+      errors.push({ posId, error: e.message });
+    }
+  });
+
+  return trades;
+}
+
+// ── Normalize date/time strings from any format
 function normalizeDateTime(str) {
-  if(!str) return new Date().toISOString();
-  // Handle various date formats
+  if(!str || str === '' || str === 'undefined') return new Date().toISOString();
   str = str.toString().trim();
-  // Replace dots with dashes for EU format
+
+  // Already ISO
+  if(/^\d{4}-\d{2}-\d{2}T/.test(str)) return str;
+
+  // Replace dots: 2025.01.06 → 2025-01-06
   str = str.replace(/(\d{4})\.(\d{2})\.(\d{2})/, '$1-$2-$3');
+  // Replace slashes: 06/01/2025 → handled below
+  str = str.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1');
+
   const d = new Date(str);
-  if(!isNaN(d)) return d.toISOString();
-  // Try common formats
-  const parts = str.split(/[\s\/\-:\.]/);
+  if(!isNaN(d.getTime())) return d.toISOString();
+
+  // Try splitting on common separators
+  const parts = str.split(/[\s\/\-:\.T]/);
   if(parts.length >= 3) {
     try {
-      const d2 = new Date(parts.slice(0,3).join('-') + (parts.length > 3 ? 'T' + parts.slice(3).join(':') : ''));
-      if(!isNaN(d2)) return d2.toISOString();
+      const joined = parts.slice(0,3).join('-') + (parts.length > 3 ? 'T' + parts.slice(3,6).join(':') : 'T00:00:00');
+      const d2 = new Date(joined);
+      if(!isNaN(d2.getTime())) return d2.toISOString();
     } catch(e) {}
   }
   return new Date().toISOString();
+}
+
+function chunkArray(arr, size) {
+  const chunks = [];
+  for(let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i+size));
+  return chunks;
 }
 
 // =====================================================
@@ -1525,9 +2013,7 @@ function analyzeMistakes(trades) {
     revenge_trading: { type:'revenge_trading', count:0, tradeIds:[], totalImpact:0 },
     emotional_trading: { type:'emotional_trading', count:0, tradeIds:[], totalImpact:0 },
     overtrading: { type:'overtrading', count:0, tradeIds:[], totalImpact:0 },
-  bad_rr: { type:'bad_rr', count:0, tradeIds:[], totalImpact:0 },
-  odd_hour_trade: { type:'odd_hour_trade', count:0, tradeIds:[], totalImpact:0 },
-  session_mismatch: { type:'session_mismatch', count:0, tradeIds:[], totalImpact:0 }
+    bad_rr: { type:'bad_rr', count:0, tradeIds:[], totalImpact:0 }
   };
   
   sorted.forEach((t, idx) => {
@@ -1574,12 +2060,30 @@ function analyzeMistakes(trades) {
       }
     }
     
-    // 6. OVERTRADING (per day)
+    // 6. OVERTRADING (per day) — new rule:
+    // If a single day records 3 losing trades and the trader places any trades after the 3rd loss,
+    // those subsequent trades are flagged as overtrading. Three losses alone are not flagged.
     const day = (t.closeTime||'').substring(0,10);
-    if(byDay[day] && byDay[day].length > avgDailyTrades * 2 && avgDailyTrades > 0) {
-      if(!mistakes.overtrading.tradeIds.includes(t.id)) {
-        mistakes.overtrading.count++;
-        mistakes.overtrading.tradeIds.push(t.id);
+    if(byDay[day] && byDay[day].length > 0) {
+      // ensure day trades are sorted by closeTime ascending
+      const dayTrades = byDay[day].slice().sort((a,b) => new Date(a.closeTime) - new Date(b.closeTime));
+      let lossCount = 0;
+      let indexOfThirdLoss = -1;
+      for(let i=0;i<dayTrades.length;i++){
+        if((dayTrades[i].profit||0) < 0) {
+          lossCount++;
+          if(lossCount === 3) { indexOfThirdLoss = i; break; }
+        }
+      }
+      if(indexOfThirdLoss !== -1) {
+        // flag any trades that occur after the 3rd loss as overtrading
+        for(let j = indexOfThirdLoss + 1; j < dayTrades.length; j++) {
+          const tradeAfter = dayTrades[j];
+          if(!mistakes.overtrading.tradeIds.includes(tradeAfter.id)) {
+            mistakes.overtrading.count++;
+            mistakes.overtrading.tradeIds.push(tradeAfter.id);
+          }
+        }
       }
     }
     
@@ -1591,69 +2095,104 @@ function analyzeMistakes(trades) {
         mistakes.bad_rr.tradeIds.push(t.id);
       }
     }
-
-    // 8. ODD-HOUR TRADES (local quiet hours, default 00:00-05:00)
-    try {
-      const tz = appState.userProfile?.timezone || 'UTC';
-      const closeDate = new Date(t.closeTime);
-      // Convert to user's timezone by using UTC offset heuristics (approx)
-      const localHour = new Date(t.closeTime).getHours();
-      if(localHour >=0 && localHour < 5) {
-        mistakes.odd_hour_trade.count++;
-        mistakes.odd_hour_trade.tradeIds.push(t.id);
-      }
-    } catch(e) {}
-
-    // 9. SESSION MISMATCH — simple heuristic per symbol main session
-    try {
-      const sym = (t.symbol||'').toUpperCase();
-      const hr = new Date(t.openTime).getUTCHours();
-      // Heuristic session windows in UTC
-      const sessions = {
-        'EURUSD': { start: 7, end: 17 }, // London/NewYork overlap
-        'GBPUSD': { start: 7, end: 17 },
-        'USDJPY': { start: 23, end: 8 }, // Tokyo prime (wraps midnight)
-        'AUDUSD': { start: 22, end: 7 },
-        'USDCAD': { start: 12, end: 22 },
-        'XAUUSD': { start: 0, end: 23 }
-      };
-      const s = sessions[sym];
-      if(s) {
-        let inWindow = false;
-        if(s.start <= s.end) inWindow = hr >= s.start && hr < s.end;
-        else inWindow = hr >= s.start || hr < s.end; // overnight window
-        if(!inWindow) {
-          mistakes.session_mismatch.count++;
-          mistakes.session_mismatch.tradeIds.push(t.id);
-        }
-      }
-    } catch(e) {}
   });
   
   return Object.values(mistakes).filter(m => m.count > 0);
 }
 
 function computeDisciplineScore(trades) {
+  // New approach: compute components and apply imbalance penalty (largest loss vs largest win)
   if(!trades.length) return 100;
-  const mistakes = analyzeMistakes(trades);
-  const weekTrades = getWeekTrades(trades);
-  if(!weekTrades.length) {
-    const allMistakes = analyzeMistakes(trades);
-    const totalPenalty = allMistakes.reduce((s,m) => s + m.count * getSeverityWeight(m.type), 0);
-    const maxPenalty = trades.length * 3;
-    return Math.max(0, Math.round(100 - (totalPenalty / maxPenalty) * 100));
-  }
-  const weekMistakes = analyzeMistakes(weekTrades);
-  const totalPenalty = weekMistakes.reduce((s,m) => s + m.count * getSeverityWeight(m.type), 0);
-  const maxPenalty = weekTrades.length * 3;
-  return Math.max(0, Math.round(100 - (totalPenalty / maxPenalty) * 100));
+  const comps = computeDisciplineComponents(trades);
+  return Math.max(0, Math.round(comps.finalScore));
+}
+
+function computeDisciplineComponents(trades) {
+  // Base mistakes-based penalty (same idea as before)
+  const allMistakes = analyzeMistakes(trades);
+  const mistakesPenalty = allMistakes.reduce((s,m) => s + m.count * getSeverityWeight(m.type), 0);
+  const maxPenalty = trades.length * 3 || 1;
+  const mistakePenaltyPct = Math.min(1, mistakesPenalty / maxPenalty);
+  const baseScore = Math.max(0, 100 - mistakePenaltyPct * 100);
+
+  // Trade-level metrics
+  const wins = trades.filter(t => t.profit > 0);
+  const losses = trades.filter(t => t.profit <= 0);
+  const highestProfit = wins.length ? Math.max(...wins.map(t=>t.profit)) : 0;
+  const highestLoss = losses.length ? Math.min(...losses.map(t=>t.profit)) : 0; // negative or 0
+  const avgWin = wins.length ? wins.reduce((s,t)=>s+t.profit,0)/wins.length : 0;
+  const avgLoss = losses.length ? Math.abs(losses.reduce((s,t)=>s+t.profit,0)/losses.length) : 0;
+  const winRate = trades.length ? (wins.length/trades.length) : 0;
+
+  // Imbalance penalty: if largest loss magnitude is significantly larger than largest win
+  const maxWin = highestProfit || 1;
+  const maxLossAbs = Math.abs(highestLoss) || 0;
+  const imbalanceRatio = maxLossAbs / maxWin;
+  // penalty scales: if imbalanceRatio <=1 -> 0, if >1 -> increases (capped)
+  const imbalancePenalty = Math.max(0, Math.min(30, (imbalanceRatio - 1) * 10));
+
+  // Small volatility penalty (many small losses compared to wins)
+  const avgLossVal = avgLoss || 1;
+  const avgWinVal = avgWin || 1;
+  const volatilityPenalty = Math.max(0, Math.min(15, (avgLossVal / avgWinVal - 1) * 5));
+  // Risk-adherence evaluation: check each trade's actual dollar risk vs allowed per-trade risk
+  const allowedRiskPct = appState.userProfile?.riskPercent || 2; // percent
+  const accountEquity = appState.userProfile?.accountEquity || 10000;
+  let riskBreaches = 0;
+  let totalExcessRisk = 0;
+  let totalRiskPenalty = 0;
+
+  trades.forEach(t => {
+    try {
+      const lot = parseFloat(t.lotSize) || 0;
+      const open = parseFloat(t.openPrice) || 0;
+      const sl = parseFloat(t.stopLoss) || 0;
+      const sym = (t.symbol || '').toUpperCase();
+      if(lot > 0 && open && sl && open !== sl) {
+        const pipSize = pipValueForSymbol(sym);
+        const pipDistance = Math.abs(open - sl) / pipSize; // pips
+        const pipValuePerLot = sym.includes('JPY') ? 1000 : 10;
+        const actualRisk = lot * pipDistance * pipValuePerLot; // USD approx
+        const allowedRiskAmount = accountEquity * (allowedRiskPct / 100);
+        if(actualRisk > allowedRiskAmount) {
+          riskBreaches++;
+          totalExcessRisk += (actualRisk - allowedRiskAmount);
+          const breachRatio = actualRisk / Math.max(allowedRiskAmount, 1);
+          // Penalty per-breach: scaled, capped at 10 points per trade
+          const penalty = Math.min(10, (breachRatio - 1) * 10);
+          totalRiskPenalty += penalty;
+        }
+      }
+    } catch(e) { /* ignore malformed trade rows */ }
+  });
+
+  // Cap the total risk adherence penalty so it doesn't dominate the score
+  const riskAdherencePenalty = Math.max(0, Math.min(20, totalRiskPenalty));
+
+  // Final score composition (include risk adherence penalty)
+  let finalScore = baseScore - imbalancePenalty - volatilityPenalty - riskAdherencePenalty;
+  finalScore = Math.max(0, Math.min(100, finalScore));
+
+  return {
+    finalScore,
+    baseScore,
+    mistakesPenalty,
+    mistakePenaltyPct,
+    imbalancePenalty,
+    volatilityPenalty,
+    riskAdherencePenalty,
+    riskBreachesCount: riskBreaches,
+    totalExcessRisk: +totalExcessRisk.toFixed(2),
+    allowedRiskPct,
+    allowedRiskAmount: +(accountEquity * (allowedRiskPct / 100)).toFixed(2),
+    metrics: { totalTrades: trades.length, wins: wins.length, losses: losses.length, winRate, avgWin, avgLoss, highestProfit, highestLoss, imbalanceRatio }
+  };
 }
 
 function getSeverityWeight(type) {
   const weights = {
     no_stop_loss: 4, revenge_trading: 3, emotional_trading: 3,
     over_leveraging: 2.5, bad_rr: 2, overtrading: 1.5, early_exit: 1
-  , odd_hour_trade: 0.8, session_mismatch: 1.2
   };
   return weights[type] || 1;
 }
@@ -1790,7 +2329,8 @@ function renderMistakesPage() {
           <div class="report-score-num" style="color:${scoreColor}">${score}</div>
           <div class="report-score-label">/ 100</div>
         </div>
-  <div style="font-size:13px;color:${scoreColor};font-weight:600">${score>=70 ? 'Good' : score<50 ? 'Needs Work' : 'Fair'}</div>
+      <div style="font-size:13px;color:${scoreColor};font-weight:600">${score>=70 ? 'Good' : score<50 ? 'Needs Work' : 'Fair'}</div>
+            <div style="margin-top:8px"><button class="btn btn-ghost" style="font-size:12px;padding:6px 8px" onclick="openScoreBreakdown()">How score is measured</button></div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px">${filtered.length} trades analyzed</div>
       </div>
     </div>
@@ -1808,7 +2348,7 @@ function renderMistakesPage() {
   </div>
 
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
-      ${mistakes.length ? mistakes.map(m=>`
+    ${mistakes.length ? mistakes.map(m=>`
       <div class="card" style="border-left:3px solid ${MISTAKE_COLORS[m.type]||'#888'}">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-weight:600;color:var(--text);font-size:14px">${MISTAKE_LABELS[m.type]||m.type}</div>
@@ -1819,7 +2359,7 @@ function renderMistakesPage() {
         </div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:10px">${getMistakeDescription(m.type)}</div>
         ${m.totalImpact < 0 ? `<div style="font-size:11px;color:var(--red);margin-bottom:8px">💸 Estimated cost: $${Math.abs(m.totalImpact).toFixed(0)}</div>` : ''}
-        <div style="font-size:12px;background:var(--bg3);border-radius:6px;padding:8px 10px;color:var(--gold)">
+  <div style="font-size:12px;background:var(--bg3);border-radius:6px;padding:8px 10px;color:var(--accent)">
           💡 ${getMistakeTip(m.type)}
         </div>
       </div>`).join('') : `<div class="card"><div class="empty-state" style="padding:20px">
@@ -1828,121 +2368,6 @@ function renderMistakesPage() {
         <div class="empty-sub">No mistakes detected in this period. Keep it up!</div>
       </div></div>`}
   </div>`;
-}
-
-// =====================================================
-// TRADE DETAIL & MISTAKE-TRADE VIEW HELPERS
-// =====================================================
-function openMistakeTrades(type) {
-  const trades = appState.trades.filter(t => analyzeMistakes([t]).some(m => m.type === type));
-  // Fallback: include trades listed in mistake tradeIds
-  if(!trades.length) {
-    const all = analyzeMistakes(appState.trades);
-    const m = all.find(x=>x.type===type);
-    if(m && m.tradeIds) {
-      trades.push(...appState.trades.filter(t=>m.tradeIds.includes(t.id)));
-    }
-  }
-  const title = MISTAKE_LABELS[type] || type;
-  const body = renderTradeTable(trades, `Trades flagged for: ${title}`);
-  document.getElementById('detail-modal-title').textContent = `Trades — ${title}`;
-  document.getElementById('detail-modal-body').innerHTML = body;
-  document.getElementById('detail-modal').classList.add('active');
-}
-
-function renderTradeTable(trades, heading) {
-  if(!trades || !trades.length) return `<div class="empty-state"><div class="empty-icon">ℹ️</div><div class="empty-title">No trades</div><div class="empty-sub">No trades available for this filter.</div></div>`;
-  const rows = trades.map(t => {
-    const dur = computeDuration(t.openTime, t.closeTime);
-    const rr = computeRR(t);
-    const pctRisk = ((Math.abs(t.profit) / (appState.userProfile?.accountEquity || 10000)) * 100).toFixed(2);
-    return `<tr>
-      <td style="font-size:11px">${t.ticket||''}</td>
-      <td><strong style="color:var(--text)">${t.symbol}</strong></td>
-      <td>${(t.type||'').toUpperCase()}</td>
-      <td>${t.lotSize}</td>
-      <td style="font-size:11px">${formatTime(t.openTime)}</td>
-      <td style="font-size:11px">${formatTime(t.closeTime)}</td>
-      <td>${t.openPrice||'—'}</td>
-      <td>${t.closePrice||'—'}</td>
-      <td>${rr}</td>
-      <td class="${(t.profit||0)>=0?'td-profit-pos':'td-profit-neg'}">${(t.profit||0)>=0?'+':''}$${(+(t.profit||0)).toFixed(2)}</td>
-      <td style="font-size:11px">${dur}</td>
-      <td style="font-size:11px">${pctRisk}%</td>
-      <td><button class="btn btn-ghost" onclick="openTradeDetail('${t.id}')">Details</button></td>
-    </tr>`;
-  }).join('');
-
-  return `
-    <div style="margin-bottom:12px;font-weight:600;color:var(--text)">${heading}</div>
-    <div class="table-wrap"><table>
-      <thead><tr>
-        <th>Ticket</th><th>Symbol</th><th>Type</th><th>Lots</th><th>Open</th><th>Close</th>
-        <th>Open Price</th><th>Close Price</th><th>R:R</th><th>Profit</th><th>Duration</th><th>%Equity</th><th></th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>`;
-}
-
-function openTradeDetail(id) {
-  const t = appState.trades.find(x=>x.id===id);
-  if(!t) return toast('Trade not found', 'error');
-  const rr = computeRR(t);
-  const dur = computeDuration(t.openTime, t.closeTime);
-  const html = `
-    <div style="display:flex;gap:18px;flex-wrap:wrap">
-      <div style="flex:1;min-width:240px">
-        <div style="font-weight:700;font-size:16px">${t.symbol} — ${t.type?.toUpperCase()}</div>
-        <div style="color:var(--text3);font-size:13px;margin-top:6px">Ticket: ${t.ticket||'—'}</div>
-        <div style="margin-top:10px;font-size:13px">Open: <strong>${formatTime(t.openTime)}</strong></div>
-        <div style="font-size:13px">Close: <strong>${formatTime(t.closeTime)}</strong></div>
-        <div style="font-size:13px">Duration: <strong>${dur}</strong></div>
-      </div>
-      <div style="flex:1;min-width:200px">
-        <div style="font-size:13px">Open Price: <strong>${t.openPrice||'—'}</strong></div>
-        <div style="font-size:13px">Close Price: <strong>${t.closePrice||'—'}</strong></div>
-        <div style="font-size:13px">Stop Loss: <strong>${t.stopLoss||'—'}</strong></div>
-        <div style="font-size:13px">Take Profit: <strong>${t.takeProfit||'—'}</strong></div>
-      </div>
-      <div style="flex:1;min-width:180px">
-        <div style="font-size:13px">Profit: <strong class="${t.profit>=0?'td-profit-pos':'td-profit-neg'}">${t.profit>=0?'+':''}$${(+t.profit).toFixed(2)}</strong></div>
-        <div style="font-size:13px">R:R: <strong>${rr}</strong></div>
-        <div style="font-size:13px">Lot Size: <strong>${t.lotSize}</strong></div>
-        <div style="font-size:13px">Running Equity: <strong>$${(t.runningEquity||'—')}</strong></div>
-      </div>
-    </div>
-    <div style="margin-top:12px;font-size:13px;color:var(--text2)">Comment: ${t.comment||'—'}</div>
-  `;
-  document.getElementById('detail-modal-title').textContent = `Trade ${t.ticket || ''}`;
-  document.getElementById('detail-modal-body').innerHTML = html;
-  document.getElementById('detail-modal').classList.add('active');
-}
-
-function closeDetailModal() { document.getElementById('detail-modal').classList.remove('active'); }
-
-function computeRR(t) {
-  try {
-    const open = parseFloat(t.openPrice) || 0;
-    const sl = parseFloat(t.stopLoss) || 0;
-    const tp = parseFloat(t.takeProfit) || 0;
-    if(!open || !sl || !tp) return '—';
-    const rr = Math.abs((tp - open) / (open - sl));
-    if(!isFinite(rr) || rr <= 0) return '—';
-    return rr.toFixed(2);
-  } catch(e) { return '—'; }
-}
-
-function computeDuration(openStr, closeStr) {
-  try {
-    const o = new Date(openStr); const c = new Date(closeStr);
-    if(isNaN(o) || isNaN(c)) return '—';
-    const diff = Math.abs(c - o) / 1000; // seconds
-    if(diff < 60) return `${Math.round(diff)}s`;
-    const mins = Math.floor(diff / 60);
-    if(mins < 60) return `${mins}m`;
-    const hrs = Math.floor(mins / 60); const remM = mins % 60;
-    return `${hrs}h ${remM}m`;
-  } catch(e) { return '—'; }
 }
 
 function getMistakeDescription(type) {
@@ -1954,8 +2379,6 @@ function getMistakeDescription(type) {
     emotional_trading: 'Lot sizes spiked to more than 2.5× your average after a losing trade — impulsive sizing.',
     overtrading: 'Trading frequency on certain days exceeded 2× your normal daily average.',
     bad_rr: 'Entries were taken with a risk-reward ratio below half of your personal average R:R.'
-  , odd_hour_trade: 'Trades taken during local quiet hours may be lower-quality or subject to wider spreads/liquidity issues.'
-  , session_mismatch: 'Trades taken outside the typical market session for this instrument can be poorly correlated with session liquidity and may indicate random or impulsive entries.'
   };
   return desc[type] || 'This pattern was detected in your trading history.';
 }
@@ -1969,8 +2392,6 @@ function getMistakeTip(type) {
     emotional_trading: 'Pre-define your lot size before market open. Do not change it during the session.',
     overtrading: 'Set a daily trade limit (e.g., max 3 trades/day). Stop when you hit it, win or lose.',
     bad_rr: 'Only enter trades with minimum 1.5:1 R:R. If the setup doesn\'t offer it, skip the trade.'
-  , odd_hour_trade: 'Avoid taking new trades during 00:00–05:00 local time unless you have a clear session-specific strategy. Prefer to plan or set alerts instead.'
-  , session_mismatch: 'Review the session profile for this symbol and prefer entries during its active hours. If you trade off-session, use tighter risk controls.'
   };
   return tips[type] || 'Review these trades and identify what triggered this behavior.';
 }
@@ -2324,6 +2745,203 @@ function toast(msg, type='info') {
   container.appendChild(el);
   setTimeout(() => { el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(), 300); }, 4000);
 }
+
+// =====================================================
+// TRADE LIST & DETAIL HELPERS
+// =====================================================
+function openMistakeTrades(type) {
+  // collect trades flagged with this mistake
+  const all = analyzeMistakes(appState.trades);
+  const m = all.find(x => x.type === type);
+  let trades = [];
+  if(m && m.tradeIds && m.tradeIds.length) {
+    trades = appState.trades.filter(t => m.tradeIds.includes(t.id));
+  } else {
+    // fallback: heuristic filter by running analyze on single trades
+    trades = appState.trades.filter(t => analyzeMistakes([t]).some(x => x.type === type));
+  }
+  const title = MISTAKE_LABELS[type] || type;
+  document.getElementById('detail-modal-title').textContent = `Trades — ${title}`;
+  document.getElementById('detail-modal-body').innerHTML = renderTradeTable(trades, `Trades flagged for: ${title}`);
+  document.getElementById('detail-modal').classList.add('active');
+}
+
+function renderTradeTable(trades, heading) {
+  if(!trades || trades.length === 0) return `<div class="empty-state"><div class="empty-icon">ℹ️</div><div class="empty-title">No trades</div><div class="empty-sub">No trades available for this filter.</div></div>`;
+  const rows = trades.map(t => {
+    const dur = computeDuration(t.openTime, t.closeTime);
+    const rr = computeRR(t);
+    const pctRisk = ((Math.abs(t.profit) / (appState.userProfile?.accountEquity || 10000)) * 100).toFixed(2);
+    return `<tr>
+      <td style="font-size:11px">${t.ticket||''}</td>
+      <td><strong style="color:var(--text)">${t.symbol}</strong></td>
+      <td>${(t.type||'').toUpperCase()}</td>
+      <td>${t.lotSize}</td>
+      <td style="font-size:11px">${formatTime(t.openTime)}</td>
+      <td style="font-size:11px">${formatTime(t.closeTime)}</td>
+      <td>${t.openPrice||'—'}</td>
+      <td>${t.closePrice||'—'}</td>
+      <td>${rr}</td>
+      <td class="${(t.profit||0)>=0?'td-profit-pos':'td-profit-neg'}">${(t.profit||0)>=0?'+':''}$${(+(t.profit||0)).toFixed(2)}</td>
+      <td style="font-size:11px">${dur}</td>
+      <td style="font-size:11px">${pctRisk}%</td>
+      <td><button class="btn btn-ghost" onclick="openTradeDetail('${t.id}')">Details</button></td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div style="margin-bottom:12px;font-weight:600;color:var(--text)">${heading}</div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>Ticket</th><th>Symbol</th><th>Type</th><th>Lots</th><th>Open</th><th>Close</th>
+        <th>Open Price</th><th>Close Price</th><th>R:R</th><th>Profit</th><th>Duration</th><th>%Equity</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+function openTradeDetail(id) {
+  const t = appState.trades.find(x => x.id === id);
+  if(!t) return toast('Trade not found', 'error');
+  const rr = computeRR(t);
+  const dur = computeDuration(t.openTime, t.closeTime);
+  const html = `
+    <div style="display:flex;gap:18px;flex-wrap:wrap">
+      <div style="flex:1;min-width:240px">
+        <div style="font-weight:700;font-size:16px">${t.symbol} — ${t.type?.toUpperCase()}</div>
+        <div style="color:var(--text3);font-size:13px;margin-top:6px">Ticket: ${t.ticket||'—'}</div>
+        <div style="margin-top:10px;font-size:13px">Open: <strong>${formatTime(t.openTime)}</strong></div>
+        <div style="font-size:13px">Close: <strong>${formatTime(t.closeTime)}</strong></div>
+        <div style="font-size:13px">Duration: <strong>${dur}</strong></div>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:13px">Open Price: <strong>${t.openPrice||'—'}</strong></div>
+        <div style="font-size:13px">Close Price: <strong>${t.closePrice||'—'}</strong></div>
+        <div style="font-size:13px">Stop Loss: <strong>${t.stopLoss||'—'}</strong></div>
+        <div style="font-size:13px">Take Profit: <strong>${t.takeProfit||'—'}</strong></div>
+      </div>
+      <div style="flex:1;min-width:180px">
+        <div style="font-size:13px">Profit: <strong class="${t.profit>=0?'td-profit-pos':'td-profit-neg'}">${t.profit>=0?'+':''}$${(+t.profit).toFixed(2)}</strong></div>
+        <div style="font-size:13px">R:R: <strong>${rr}</strong></div>
+        <div style="font-size:13px">Lot Size: <strong>${t.lotSize}</strong></div>
+        <div style="font-size:13px">Running Equity: <strong>$${(t.runningEquity||'—')}</strong></div>
+  <div style="margin-top:8px"><button class="btn btn-ghost" onclick="recommendLotFromTrade('${t.id}')">Recommend lot</button></div>
+      </div>
+    </div>
+    <div style="margin-top:12px;font-size:13px;color:var(--text2)">Comment: ${t.comment||'—'}</div>
+  `;
+  document.getElementById('detail-modal-title').textContent = `Trade ${t.ticket || ''}`;
+  document.getElementById('detail-modal-body').innerHTML = html;
+  document.getElementById('detail-modal').classList.add('active');
+}
+
+function pipValueForSymbol(symbol) {
+  // Basic pip value per standard lot in USD for common FX majors
+  const s = (symbol||'').toUpperCase();
+  if(s.includes('JPY')) return 0.01; // pip = 0.01 for JPY pairs
+  return 0.0001; // standard pip for most pairs
+}
+
+function calculateLot(equity, riskPercent, entry, stop, symbol) {
+  const riskAmount = equity * (riskPercent / 100);
+  const pipSize = pipValueForSymbol(symbol);
+  const pipDistance = Math.abs(entry - stop) / pipSize; // pips
+  if(pipDistance <= 0) return { error: 'Invalid stop distance' };
+  // For forex, approximate: value per pip per lot = 10 USD for EURUSD-like pairs
+  const pipValuePerLot = symbol && symbol.toUpperCase().includes('JPY') ? 1000 : 10;
+  const lot = riskAmount / (pipDistance * pipValuePerLot);
+  return { lot: +lot.toFixed(2), pipDistance: Math.round(pipDistance), riskAmount: +riskAmount.toFixed(2) };
+}
+
+function calculateLotFromInputs() {
+  const pair = document.getElementById('risk-pair').value || 'EURUSD';
+  const entry = parseFloat(document.getElementById('risk-entry').value);
+  const stop = parseFloat(document.getElementById('risk-stop').value);
+  const riskPct = parseFloat(document.getElementById('risk-percent').value) || (appState.userProfile?.riskPercent || 2);
+  const equity = appState.userProfile?.accountEquity || 10000;
+  const res = calculateLot(equity, riskPct, entry, stop, pair);
+  const out = document.getElementById('risk-result');
+  if(res.error) { out.textContent = res.error; return; }
+  out.innerHTML = `Recommended lot: <strong>${res.lot} lots</strong> — risk $${res.riskAmount} (~${res.pipDistance} pips)`;
+}
+
+function recommendLotFromTrade(id) {
+  const t = appState.trades.find(x=>x.id===id);
+  if(!t) return toast('Trade not found', 'error');
+  const equity = appState.userProfile?.accountEquity || 10000;
+  const riskPct = appState.userProfile?.riskPercent || 2;
+  const entry = parseFloat(t.openPrice) || 0;
+  const stop = parseFloat(t.stopLoss) || 0;
+  const pair = t.symbol || 'EURUSD';
+  const res = calculateLot(equity, riskPct, entry, stop, pair);
+  if(res.error) return toast(res.error, 'error');
+  document.getElementById('detail-modal-body').insertAdjacentHTML('beforeend', `<div style="margin-top:12px">Recommended lot (based on your account settings): <strong>${res.lot} lots</strong> — risk $${res.riskAmount}</div>`);
+}
+
+function closeDetailModal() { document.getElementById('detail-modal').classList.remove('active'); }
+
+function computeRR(t) {
+  try {
+    const open = parseFloat(t.openPrice) || 0;
+    const sl = parseFloat(t.stopLoss) || 0;
+    const tp = parseFloat(t.takeProfit) || 0;
+    if(!open || !sl || !tp) return '—';
+    const rr = Math.abs((tp - open) / (open - sl));
+    if(!isFinite(rr) || rr <= 0) return '—';
+    return rr.toFixed(2);
+  } catch(e) { return '—'; }
+}
+
+function computeDuration(openStr, closeStr) {
+  try {
+    const o = new Date(openStr); const c = new Date(closeStr);
+    if(isNaN(o) || isNaN(c)) return '—';
+    const diff = Math.abs(c - o) / 1000; // seconds
+    if(diff < 60) return `${Math.round(diff)}s`;
+    const mins = Math.floor(diff / 60);
+    if(mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60); const remM = mins % 60;
+    return `${hrs}h ${remM}m`;
+  } catch(e) { return '—'; }
+}
+
+function openScoreBreakdown() {
+  const comps = computeDisciplineComponents(appState.trades);
+  const m = comps.metrics;
+  const html = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <div style="font-weight:700">Final Score</div>
+  <div style="font-size:28px;color:var(--accent);font-weight:700;margin-top:6px">${comps.finalScore}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:6px">Base score (mistakes-adjusted): ${comps.baseScore.toFixed(1)}</div>
+        <div style="font-size:12px;color:var(--text3)">Mistakes penalty total: ${comps.mistakesPenalty.toFixed(1)}</div>
+      </div>
+      <div>
+        <div style="font-weight:700">Trade metrics</div>
+        <div style="font-size:13px;margin-top:6px">Total trades: ${m.totalTrades}</div>
+        <div style="font-size:13px">Wins: ${m.wins} • Losses: ${m.losses} • Win rate: ${(m.winRate*100).toFixed(1)}%</div>
+        <div style="font-size:13px">Avg Win: $${m.avgWin.toFixed(2)} • Avg Loss: $${m.avgLoss.toFixed(2)}</div>
+        <div style="font-size:13px">Highest Profit: $${(m.highestProfit||0).toFixed(2)} • Highest Loss: $${(m.highestLoss||0).toFixed(2)}</div>
+        <div style="font-size:13px">Imbalance ratio (|loss| / win): ${m.imbalanceRatio.toFixed(2)}</div>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <div style="font-weight:700">Applied penalties</div>
+      <div style="font-size:13px;margin-top:6px">Imbalance penalty: ${comps.imbalancePenalty.toFixed(1)} pts</div>
+      <div style="font-size:13px">Volatility penalty: ${comps.volatilityPenalty.toFixed(1)} pts</div>
+      <div style="font-size:13px;margin-top:6px">Risk-adherence penalty: ${((comps.riskAdherencePenalty)||0).toFixed(1)} pts</div>
+      <div style="font-size:13px">Risk breaches: ${comps.riskBreachesCount || 0} • Total excess risk: $${(comps.totalExcessRisk||0).toFixed(2)}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:6px">Allowed per-trade risk: ${comps.allowedRiskPct}% (~$${(comps.allowedRiskAmount||0).toFixed(2)})</div>
+    </div>
+    <div style="margin-top:12px;font-size:13px;color:var(--text3)">
+      These components are combined to produce the discipline score. The system penalizes frequent or severe mistake patterns, large loss vs win imbalance, and volatility in average win/loss sizes.
+    </div>
+  `;
+  document.getElementById('score-modal-body').innerHTML = html;
+  document.getElementById('score-modal').classList.add('active');
+}
+
+function closeScoreModal() { document.getElementById('score-modal').classList.remove('active'); }
 
 // =====================================================
 // CHART RESIZE HANDLER
