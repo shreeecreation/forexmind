@@ -1,0 +1,317 @@
+<!-- 
+  ForexMind Landing Page & Auth Screen 
+  Replace your existing #auth-screen div with this code.
+-->
+
+<style>
+  /* Landing Page Specific Styles */
+  .landing-wrapper {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 80px;
+  }
+
+  .hero-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    padding: 60px 0;
+  }
+
+  .hero-content {
+    flex: 1;
+    max-width: 600px;
+  }
+
+  .hero-title {
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 24px;
+    background: linear-gradient(135deg, #fff 0%, var(--text2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero-title span {
+    color: var(--accent);
+    -webkit-text-fill-color: var(--accent);
+  }
+
+  .hero-subtitle {
+    font-size: 18px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 32px;
+    margin-top: 40px;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    transition: transform 0.3s ease, border-color 0.3s ease;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent);
+  }
+
+  .feature-icon {
+    font-size: 32px;
+    margin-bottom: 20px;
+    display: block;
+  }
+
+  .feature-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+
+  .feature-desc {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
+  .how-it-works {
+    text-align: center;
+    padding: 60px 0;
+  }
+
+  .section-tag {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .section-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 48px;
+  }
+
+  .steps-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 40px;
+    position: relative;
+  }
+
+  .step-item {
+    flex: 1;
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-number {
+    width: 40px;
+    height: 40px;
+    background: var(--accent);
+    color: #000;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    margin: 0 auto 20px;
+  }
+
+  @media (max-width: 900px) {
+    .hero-section {
+      flex-direction: column;
+      text-align: center;
+    }
+    .hero-stats {
+      justify-content: center;
+    }
+    .steps-container {
+      flex-direction: column;
+    }
+  }
+</style>
+
+<div id="auth-screen">
+  <div class="landing-wrapper">
+    <!-- HERO SECTION -->
+    <section class="hero-section">
+      <div class="hero-content">
+        <div class="logo-mark" style="margin-bottom: 32px;">
+          <div class="logo-icon">📈</div>
+          <div class="logo-text" style="font-size: 24px;">Forex<span>Mind</span></div>
+        </div>
+        <h1 class="hero-title">Master Your <span>Trading Psychology</span> with Data.</h1>
+        <p class="hero-subtitle">
+          The ultimate trading journal for professional traders. Track your discipline, analyze your behavior, and eliminate emotional mistakes with our advanced behavioral engine.
+        </p>
+        <div style="display: flex; gap: 16px;">
+          <button class="btn btn-primary" style="padding: 14px 32px; font-size: 16px;" onclick="showRegister()">Get Started Free</button>
+          <button class="btn btn-secondary" style="padding: 14px 32px; font-size: 16px;" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">Explore Features</button>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="stat-value">100%</span>
+            <span class="stat-label">Data Privacy</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">24/7</span>
+            <span class="stat-label">Real-time Sync</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">0.1s</span>
+            <span class="stat-label">Fast Import</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AUTH CARD (Right Side) -->
+      <div class="auth-container" style="margin: 0; max-width: 400px;">
+        <div class="auth-card">
+          <div id="auth-login-view">
+            <div class="auth-title">Welcome back</div>
+            <div class="auth-sub">Sign in to your trading journal</div>
+            <div id="auth-error" class="error-msg" style="display:none"></div>
+            <button class="btn-google" onclick="signInGoogle()">
+              <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3z"/></svg>
+              Continue with Google
+            </button>
+            <div class="divider">or</div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input class="form-input" type="email" id="login-email" placeholder="you@example.com"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input class="form-input" type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')signIn()"/>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="signIn()" id="login-btn">Sign In</button>
+            <div class="auth-toggle">Don't have an account? <a onclick="showRegister()">Create one</a></div>
+          </div>
+
+          <div id="auth-register-view" style="display:none">
+            <div class="auth-title">Create account</div>
+            <div class="auth-sub">Start journaling your trades today</div>
+            <div id="reg-error" class="error-msg" style="display:none"></div>
+            <button class="btn-google" onclick="signInGoogle()">
+              <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3z"/></svg>
+              Continue with Google
+            </button>
+            <div class="divider">or</div>
+            <div class="form-group">
+              <label class="form-label">Full Name</label>
+              <input class="form-input" type="text" id="reg-name" placeholder="Alex Trader"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input class="form-input" type="email" id="reg-email" placeholder="you@example.com"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input class="form-input" type="password" id="reg-password" placeholder="At least 8 characters"/>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="register()" id="reg-btn">Create Account</button>
+            <div class="auth-toggle">Already have an account? <a onclick="showLogin()">Sign in</a></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES SECTION -->
+    <section id="features">
+      <span class="section-tag">Powerful Features</span>
+      <h2 class="section-title">Everything you need to trade like a pro.</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <span class="feature-icon">🧠</span>
+          <h3 class="feature-title">Discipline Engine</h3>
+          <p class="feature-desc">Our strict behavioral engine detects revenge trading, overtrading, and risk violations in real-time.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">📊</span>
+          <h3 class="feature-title">Advanced Metrics</h3>
+          <p class="feature-desc">Go beyond P&L with Sharpe Ratio, Sortino Ratio, and Maximum Drawdown analysis.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">📓</span>
+          <h3 class="feature-title">Visual Journal</h3>
+          <p class="feature-desc">Attach chart screenshots and record your mindset for every trade to identify psychological patterns.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🏆</span>
+          <h3 class="feature-title">Global Leaderboard</h3>
+          <p class="feature-desc">Compete with a community of disciplined traders and climb the rankings based on your discipline score.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section class="how-it-works">
+      <span class="section-tag">The Process</span>
+      <h2 class="section-title">Three steps to trading excellence.</h2>
+      <div class="steps-container">
+        <div class="step-item">
+          <div class="step-number">1</div>
+          <h3 class="feature-title">Import Data</h3>
+          <p class="feature-desc">Upload your MT4/MT5 reports or log trades manually in seconds.</p>
+        </div>
+        <div class="step-item">
+          <div class="step-number">2</div>
+          <h3 class="feature-title">Analyze Behavior</h3>
+          <p class="feature-desc">Our engine scans your trades for emotional mistakes and risk violations.</p>
+        </div>
+        <div class="step-item">
+          <div class="step-number">3</div>
+          <h3 class="feature-title">Improve Discipline</h3>
+          <p class="feature-desc">Use our insights to eliminate bad habits and grow your account consistently.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer style="text-align: center; padding: 40px 0; border-top: 1px solid var(--border); color: var(--text3); font-size: 13px;">
+      &copy; 2024 ForexMind Trading Journal. All rights reserved.
+    </footer>
+  </div>
+</div>
