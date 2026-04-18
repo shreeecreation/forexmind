@@ -1,7 +1,9 @@
 /**
- * ForexMind Manual Journal UI v2
+ * ForexMind Manual Journal UI v5
  * 
  * Features:
+ * - PDF Export Functionality (using jsPDF)
+ * - Hybrid Strategy Selector (Dropdown + Custom Text Field)
  * - Compact Gallery View for images
  * - Journal Analytics Dashboard
  * - Trade Outcome (TP/SL/Profit)
@@ -67,13 +69,15 @@ const ManualJournalUI = {
                         
                         <div class="form-group">
                             <label class="form-label">Strategy Used</label>
-                            <select id="mj-strategy" class="form-input">
+                            <select id="mj-strategy-select" class="form-input" onchange="ManualJournalUI.toggleCustomStrategy(this.value)">
                                 <option value="Breakout">Breakout</option>
                                 <option value="Retest">Retest</option>
                                 <option value="Trend Following">Trend Following</option>
                                 <option value="Scalping">Scalping</option>
                                 <option value="News Trading">News Trading</option>
+                                <option value="CUSTOM">Other / Custom Strategy...</option>
                             </select>
+                            <input type="text" id="mj-strategy-custom" class="form-input" style="display:none; margin-top:8px;" placeholder="Enter custom strategy name..."/>
                         </div>
                         
                         <div class="form-group">
@@ -102,7 +106,12 @@ const ManualJournalUI = {
                 
                 <div class="col" style="flex:2;">
                     <div class="card">
-                        <div class="card-title" style="margin-bottom:16px;">📜 Journal Feed</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                            <div class="card-title">📜 Journal Feed</div>
+                            <button class="btn btn-secondary" style="padding:6px 12px; font-size:12px;" onclick="ManualJournalUI.exportToPDF()">
+                                📥 Export PDF Report
+                            </button>
+                        </div>
                         <div id="mj-feed-container">
                             ${entries.length === 0 ? `
                                 <div class="empty-state" style="padding:40px; text-align:center;">
@@ -118,6 +127,16 @@ const ManualJournalUI = {
         `;
     },
 
+    toggleCustomStrategy: function(value) {
+        const customInput = document.getElementById('mj-strategy-custom');
+        if (value === 'CUSTOM') {
+            customInput.style.display = 'block';
+            customInput.focus();
+        } else {
+            customInput.style.display = 'none';
+        }
+    },
+
     renderJournalCard: function(entry) {
         const date = entry.createdAt ? (entry.createdAt.toDate ? entry.createdAt.toDate() : new Date(entry.createdAt)).toLocaleString() : 'Just now';
         const typeColor = entry.type === 'BUY' ? 'var(--green)' : 'var(--red)';
@@ -129,7 +148,7 @@ const ManualJournalUI = {
                     <div>
                         <span style="font-weight:700; color:var(--text); font-size:16px;">${entry.symbol}</span>
                         <span class="badge" style="background:${typeColor}20; color:${typeColor}; margin-left:8px;">${entry.type}</span>
-                        <span class="badge badge-gray" style="margin-left:4px;">${entry.strategy}</span>
+                        <span class="badge badge-gray" style="margin-left:4px;">${entry.strategy || 'No Strategy'}</span>
                         <span class="badge ${isClosed ? 'badge-blue' : 'badge-amber'}" style="margin-left:4px;">${entry.status}</span>
                     </div>
                     <div style="font-size:11px; color:var(--text3);">${date}</div>
@@ -173,12 +192,12 @@ const ManualJournalUI = {
         const winRate = closed.length ? ((winners.length / closed.length) * 100).toFixed(1) : 0;
         const totalProfit = closed.reduce((s, e) => s + (e.profit || 0), 0);
 
-        // Best Strategy
         const strategies = {};
         closed.forEach(e => {
-            if (!strategies[e.strategy]) strategies[e.strategy] = { wins: 0, total: 0 };
-            strategies[e.strategy].total++;
-            if (e.profit > 0) strategies[e.strategy].wins++;
+            const sName = e.strategy || 'Unknown';
+            if (!strategies[sName]) strategies[sName] = { wins: 0, total: 0 };
+            strategies[sName].total++;
+            if (e.profit > 0) strategies[sName].wins++;
         });
         let bestStrategy = 'N/A';
         let maxWR = -1;
@@ -187,7 +206,6 @@ const ManualJournalUI = {
             if (wr > maxWR) { maxWR = wr; bestStrategy = s; }
         });
 
-        // Best Mindset
         const mindsets = {};
         closed.forEach(e => {
             if (!mindsets[e.mindset]) mindsets[e.mindset] = 0;
@@ -209,13 +227,22 @@ const ManualJournalUI = {
         const entry = document.getElementById('mj-entry').value;
         const sl = document.getElementById('mj-sl').value;
         const tp = document.getElementById('mj-tp').value;
-        const strategy = document.getElementById('mj-strategy').value;
+        
+        const strategySelect = document.getElementById('mj-strategy-select').value;
+        const strategyCustom = document.getElementById('mj-strategy-custom').value;
+        const strategy = (strategySelect === 'CUSTOM') ? strategyCustom : strategySelect;
+
         const mindset = document.getElementById('mj-mindset').value;
         const notes = document.getElementById('mj-notes').value;
         const fileInput = document.getElementById('mj-screenshot');
         
         if (!symbol || !lot || !entry) {
             toast("Please fill in Symbol, Lot, and Entry Price!", "error");
+            return;
+        }
+
+        if (strategySelect === 'CUSTOM' && !strategyCustom) {
+            toast("Please enter your custom strategy name!", "error");
             return;
         }
 
@@ -262,5 +289,93 @@ const ManualJournalUI = {
         } else {
             toast("Error closing trade: " + result.error, "error");
         }
+    },
+
+    /**
+     * Exports the manual journal entries to a PDF report.
+     */
+    exportToPDF: async function() {
+        toast("Generating PDF report...", "info");
+        
+        const entries = await ManualJournalManager.getEntries();
+        if (entries.length === 0) {
+            toast("No entries to export!", "error");
+            return;
+        }
+
+        const stats = this.calculateJournalStats(entries);
+
+        // Load jsPDF and AutoTable from CDN if not already loaded
+        if (typeof jspdf === 'undefined') {
+            await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+            await this.loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js');
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFontSize(22);
+        doc.setTextColor(20, 184, 166); // Teal color
+        doc.text("ForexMind Manual Journal Report", 14, 20);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+
+        // Analytics Summary
+        doc.setFontSize(16);
+        doc.setTextColor(0);
+        doc.text("Analytics Summary", 14, 40);
+        
+        doc.autoTable({
+            startY: 45,
+            head: [['Metric', 'Value']],
+            body: [
+                ['Journal Win Rate', `${stats.winRate}%`],
+                ['Total Journal P&L', `$${stats.totalProfit.toFixed(2)}`],
+                ['Best Strategy', stats.bestStrategy],
+                ['Most Profitable Mindset', stats.bestMindset],
+                ['Total Closed Trades', stats.closedCount.toString()]
+            ],
+            theme: 'striped',
+            headStyles: { fillColor: [20, 184, 166] }
+        });
+
+        // Trade Entries
+        doc.setFontSize(16);
+        doc.text("Journal Entries", 14, doc.lastAutoTable.finalY + 15);
+
+        const tableData = entries.map(e => [
+            e.createdAt ? (e.createdAt.toDate ? e.createdAt.toDate() : new Date(e.createdAt)).toLocaleDateString() : 'N/A',
+            e.symbol,
+            e.type,
+            e.lot,
+            e.strategy || 'N/A',
+            e.status,
+            e.profit ? `$${e.profit.toFixed(2)}` : 'N/A'
+        ]);
+
+        doc.autoTable({
+            startY: doc.lastAutoTable.finalY + 20,
+            head: [['Date', 'Symbol', 'Type', 'Lot', 'Strategy', 'Status', 'P&L']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: { fillColor: [20, 184, 166] }
+        });
+
+        // Save the PDF
+        doc.save(`ForexMind_Journal_Report_${new Date().getTime()}.pdf`);
+        toast("PDF Report Downloaded! 📄", "success");
+    },
+
+    loadScript: function(url) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = url;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
     }
 };

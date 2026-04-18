@@ -505,9 +505,9 @@ select:focus{border-color:var(--accent)}
             <div class="card-title" style="margin-bottom:12px">Select Platform</div>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
               <button class="btn platform-btn" data-platform="MT4" onclick="selectPlatform('MT4')" style="flex:1">📊 MT4</button>
-              <button class="btn platform-btn" data-platform="MT5_POSITIONS" onclick="selectPlatform('MT5_POSITIONS')" style="flex:1">📈 MT5 Positions</button>
-              <button class="btn platform-btn" data-platform="MT5_DEALS" onclick="selectPlatform('MT5_DEALS')" style="flex:1">📈 MT5 Deals</button>
-              <button class="btn platform-btn" data-platform="TradingView" onclick="selectPlatform('TradingView')" style="flex:1">🔮 TradingView</button>
+              <button class="btn platform-btn" data-platform="MT5_POSITIONS" onclick="selectPlatform('MT5_POSITIONS')" style="flex:1">📈 MT5</button>
+              <!-- <button class="btn platform-btn" data-platform="MT5_DEALS" onclick="selectPlatform('MT5_DEALS')" style="flex:1">📈 MT5 Deals</button> -->
+              <!-- <button class="btn platform-btn" data-platform="TradingView" onclick="selectPlatform('TradingView')" style="flex:1">🔮 TradingView</button> -->
               <button class="btn platform-btn" data-platform="Generic" onclick="selectPlatform('Generic')" style="flex:1">📋 Generic</button>
             </div>
             <div class="mt-3" style="font-size:12px;color:var(--text3)" id="platform-hint">Select your trading platform above to auto-detect columns.</div>
@@ -1826,6 +1826,12 @@ async function importTrades() {
 
 // ── Normalize a single row into a standard trade object
 function normalizeRow(row, map, idx) {
+    const cleanNum = (val) => {
+    if (val === null || val === undefined || val === '') return 0;
+    let s = String(val).trim().replace(/[–—]/g, '-').replace(/--/g, '-').replace(/[^\d.-]/g, '');
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  };
   // 1. IMPROVED PROFIT PARSING
   let rawProfit = String(row[map.profit] || '0').trim();
   
@@ -1844,11 +1850,12 @@ function normalizeRow(row, map, idx) {
     return parseFloat(s) || 0;
   };
 
-  const lotSize = Math.abs(parseFloat(row[map.lotSize]) || 0.01);
+
+  const lotSize = Math.abs(cleanNum(row[map.lotSize]) || 0.01);
   const openTime = row[map.openTime] || '';
   const closeTime = row[map.closeTime] || openTime;
   const sym = (row[map.symbol] || '').toString().toUpperCase().replace(/\s/g,'');
-  
+
   if(!sym) throw new Error('Missing symbol');
 
   return {
@@ -1856,10 +1863,10 @@ function normalizeRow(row, map, idx) {
     symbol:     sym,
     type:       normalizeType(row[map.type] || 'buy'),
     lotSize,
-    openPrice:  parseFloat(row[map.openPrice]) || 0,
-    closePrice: parseFloat(row[map.closePrice]) || 0,
-    stopLoss:   parseFloat(row[map.stopLoss]) || 0,
-    takeProfit: parseFloat(row[map.takeProfit]) || 0,
+     openPrice:  cleanNum(row[map.openPrice]),
+    closePrice: cleanNum(row[map.closePrice]),
+    stopLoss:   cleanNum(row[map.stopLoss]),
+    takeProfit: cleanNum(row[map.takeProfit]),
     profit:     profit, // Now correctly negative if it was a loss!
     commission: cleanOther(row[map.commission]),
     swap:       cleanOther(row[map.swap]),
